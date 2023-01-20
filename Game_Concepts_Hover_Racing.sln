@@ -1,0 +1,82 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31729.503
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Game_Concepts_Hover_Racing", "Game_Concepts_Hover_Racing.vcxproj", "{09E3BFC2-BE9D-42C6-AD13-08A2F474390E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Assesment 2 Media", "Assesment 2 Media", "{18BB5356-1A7E-4FB9-9563-B20C32C5F707}"
+	ProjectSection(SolutionItems) = preProject
+		Assesment 2 Resources\Arch.tga = Assesment 2 Resources\Arch.tga
+		Assesment 2 Resources\back.jpg = Assesment 2 Resources\back.jpg
+		Assesment 2 Resources\Banner.tga = Assesment 2 Resources\Banner.tga
+		Assesment 2 Resources\Beam1.tga = Assesment 2 Resources\Beam1.tga
+		Assesment 2 Resources\bottom.jpg = Assesment 2 Resources\bottom.jpg
+		Assesment 2 Resources\Canvas.tga = Assesment 2 Resources\Canvas.tga
+		Assesment 2 Resources\Checkpoint.x = Assesment 2 Resources\Checkpoint.x
+		Assesment 2 Resources\Cross.x = Assesment 2 Resources\Cross.x
+		Assesment 2 Resources\Fire.JPG = Assesment 2 Resources\Fire.JPG
+		Assesment 2 Resources\Flare.x = Assesment 2 Resources\Flare.x
+		Assesment 2 Resources\floorMetal1.tga = Assesment 2 Resources\floorMetal1.tga
+		Assesment 2 Resources\front.jpg = Assesment 2 Resources\front.jpg
+		Assesment 2 Resources\GarageLarge.x = Assesment 2 Resources\GarageLarge.x
+		Assesment 2 Resources\GarageSmall.x = Assesment 2 Resources\GarageSmall.x
+		Assesment 2 Resources\Grating3.tga = Assesment 2 Resources\Grating3.tga
+		Assesment 2 Resources\ground.x = Assesment 2 Resources\ground.x
+		Assesment 2 Resources\ground_01.jpg = Assesment 2 Resources\ground_01.jpg
+		Assesment 2 Resources\Interstellar.x = Assesment 2 Resources\Interstellar.x
+		Assesment 2 Resources\IsleCorner.x = Assesment 2 Resources\IsleCorner.x
+		Assesment 2 Resources\IsleCross.x = Assesment 2 Resources\IsleCross.x
+		Assesment 2 Resources\IsleStraight.x = Assesment 2 Resources\IsleStraight.x
+		Assesment 2 Resources\IsleTee.x = Assesment 2 Resources\IsleTee.x
+		Assesment 2 Resources\Lamp.x = Assesment 2 Resources\Lamp.x
+		Assesment 2 Resources\left.jpg = Assesment 2 Resources\left.jpg
+		Assesment 2 Resources\Pipe.tga = Assesment 2 Resources\Pipe.tga
+		Assesment 2 Resources\race2.x = Assesment 2 Resources\race2.x
+		Assesment 2 Resources\RedGlow.jpg = Assesment 2 Resources\RedGlow.jpg
+		Assesment 2 Resources\right.jpg = Assesment 2 Resources\right.jpg
+		Assesment 2 Resources\Sand.png = Assesment 2 Resources\Sand.png
+		Assesment 2 Resources\Skybox 07.x = Assesment 2 Resources\Skybox 07.x
+		Assesment 2 Resources\sp01.jpg = Assesment 2 Resources\sp01.jpg
+		Assesment 2 Resources\sp02-01.jpg = Assesment 2 Resources\sp02-01.jpg
+		Assesment 2 Resources\sp02_02.jpg = Assesment 2 Resources\sp02_02.jpg
+		Assesment 2 Resources\tank1.tga = Assesment 2 Resources\tank1.tga
+		Assesment 2 Resources\Tank2.tga = Assesment 2 Resources\Tank2.tga
+		Assesment 2 Resources\TankLarge1.x = Assesment 2 Resources\TankLarge1.x
+		Assesment 2 Resources\TankLarge2.x = Assesment 2 Resources\TankLarge2.x
+		Assesment 2 Resources\TankSmall1.x = Assesment 2 Resources\TankSmall1.x
+		Assesment 2 Resources\TankSmall2.x = Assesment 2 Resources\TankSmall2.x
+		Assesment 2 Resources\TankSpec.tga = Assesment 2 Resources\TankSpec.tga
+		Assesment 2 Resources\td_interstellar.jpg = Assesment 2 Resources\td_interstellar.jpg
+		Assesment 2 Resources\Tire.tga = Assesment 2 Resources\Tire.tga
+		Assesment 2 Resources\top.jpg = Assesment 2 Resources\top.jpg
+		Assesment 2 Resources\Tribune1.x = Assesment 2 Resources\Tribune1.x
+		Assesment 2 Resources\Tribune2.x = Assesment 2 Resources\Tribune2.x
+		Assesment 2 Resources\Tribune3.x = Assesment 2 Resources\Tribune3.x
+		Assesment 2 Resources\TribuneBeam.tga = Assesment 2 Resources\TribuneBeam.tga
+		Assesment 2 Resources\TribuneSeats.tga = Assesment 2 Resources\TribuneSeats.tga
+		Assesment 2 Resources\TribuneWall.tga = Assesment 2 Resources\TribuneWall.tga
+		Assesment 2 Resources\ui_backdrop.jpg = Assesment 2 Resources\ui_backdrop.jpg
+		Assesment 2 Resources\Walkway.x = Assesment 2 Resources\Walkway.x
+		Assesment 2 Resources\Wall.x = Assesment 2 Resources\Wall.x
+		Assesment 2 Resources\WallBase.tga = Assesment 2 Resources\WallBase.tga
+		Assesment 2 Resources\WallGarage.tga = Assesment 2 Resources\WallGarage.tga
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{09E3BFC2-BE9D-42C6-AD13-08A2F474390E}.Debug|Win32.ActiveCfg = Debug|Win32
+		{09E3BFC2-BE9D-42C6-AD13-08A2F474390E}.Debug|Win32.Build.0 = Debug|Win32
+		{09E3BFC2-BE9D-42C6-AD13-08A2F474390E}.Release|Win32.ActiveCfg = Release|Win32
+		{09E3BFC2-BE9D-42C6-AD13-08A2F474390E}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A7835D25-7079-46AB-BB87-D7C4F74588BE}
+	EndGlobalSection
+EndGlobal
