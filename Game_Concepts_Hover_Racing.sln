@@ -4,7 +4,7 @@ VisualStudioVersion = 16.0.31729.503
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Game_Concepts_Hover_Racing", "Game_Concepts_Hover_Racing.vcxproj", "{09E3BFC2-BE9D-42C6-AD13-08A2F474390E}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Assesment 2 Media", "Assesment 2 Media", "{18BB5356-1A7E-4FB9-9563-B20C32C5F707}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Assessment 2 Media", "Assessment 2 Media", "{18BB5356-1A7E-4FB9-9563-B20C32C5F707}"
 	ProjectSection(SolutionItems) = preProject
 		Assesment 2 Resources\Arch.tga = Assesment 2 Resources\Arch.tga
 		Assesment 2 Resources\back.jpg = Assesment 2 Resources\back.jpg
@@ -60,6 +60,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Assesment 2 Media", "Assesm
 		Assesment 2 Resources\Wall.x = Assesment 2 Resources\Wall.x
 		Assesment 2 Resources\WallBase.tga = Assesment 2 Resources\WallBase.tga
 		Assesment 2 Resources\WallGarage.tga = Assesment 2 Resources\WallGarage.tga
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{5BD5DCBB-0851-48FB-89D0-5017EE009434}"
+	ProjectSection(SolutionItems) = preProject
+		Assessment Brief.pdf = Assessment Brief.pdf
+		Marking Scheme.pdf = Marking Scheme.pdf
 	EndProjectSection
 EndProject
 Global
