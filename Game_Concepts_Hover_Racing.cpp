@@ -8,10 +8,9 @@ using namespace std;
 
 
 //Constants
-
+float frameTime = 0.0f;
 
 //Functions
-
 
 
 
@@ -29,20 +28,51 @@ void main()
 	ICamera* myCamera = myEngine->CreateCamera(kFPS);
 
 
-	IMesh* skyMesh = myEngine->LoadMesh("Skybox 07.x");
+	IMesh* skyMesh = myEngine->LoadMesh("Skybox.x");
 	IModel* skyModel = skyMesh->CreateModel(0, -960, 0);
+
+	IMesh* groundMesh = myEngine->LoadMesh("ground.x");
+	IModel* groundModel = groundMesh->CreateModel(0, 0, 0);
 
 	IMesh* archMesh = myEngine->LoadMesh("Checkpoint.x");
 	IModel* archModel = archMesh->CreateModel(0, 0, 0);
+	IModel* archModel1 = archMesh->CreateModel(0, 0, 150);
 
+	IMesh* wallMesh = myEngine->LoadMesh("Wall.x");
+	IModel* wallModel = wallMesh->CreateModel(-10.5, 0, 46);
+	IModel* wallModel2 = wallMesh->CreateModel(9.5, 0, 46);
+
+	IMesh* isleMesh = myEngine->LoadMesh("IsleStraight.x");
+	IModel* isleModel = isleMesh->CreateModel(-10, 0, 40);
+	IModel* isleModel2 = isleMesh->CreateModel(10, 0, 40);
+	IModel* isleModel3 = isleMesh->CreateModel(-10, 0, 53);
+	IModel* isleModel4 = isleMesh->CreateModel(10, 0, 53);
+
+	
+	typedef struct Racer {
+		IModel* model;
+
+		Racer(I3DEngine* myEngine, float x = 0.0f, float y = 10.0f, float z = 0.0f){
+			
+			model = myEngine->LoadMesh("Racer.x")->CreateModel(x, y, z);
+		}
+	};
+
+	
+	Racer player(myEngine);
+
+	
 
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
-	{
+	{	
+		frameTime = myEngine->Timer();
 		// Draw the scene
 		myEngine->DrawScene();
 
 		/**** Update your scene each frame here ****/
+
+
 
 	}
 
