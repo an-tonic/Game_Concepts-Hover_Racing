@@ -2,6 +2,8 @@
 
 #include <TL-Engine.h>	// TL-Engine include file and namespace
 #include <iostream>
+#include <vector>
+#include <fstream>
 
 using namespace tle;
 using namespace std;
@@ -16,6 +18,17 @@ float kAcceleration = 70.0f;
 float kAirDrag = 1.0f;
 float kRacerRotateSpeed = 30.0f;
 //Functions
+
+bool isNumber(string* line) {
+
+	for (auto ch : *line) {
+		if (isdigit(ch)) {
+			return true;
+		}
+
+	}
+	return false;
+}
 
 //Structures
 typedef struct Racer {
@@ -105,22 +118,31 @@ void main()
 	IMesh* groundMesh = myEngine->LoadMesh("ground.x");
 	IModel* groundModel = groundMesh->CreateModel(0, 0, 0);
 
-	IMesh* archMesh = myEngine->LoadMesh("Checkpoint.x");
-	IModel* archModel = archMesh->CreateModel(0, 0, 0);
-	IModel* archModel1 = archMesh->CreateModel(0, 0, 150);
 
-	IMesh* wallMesh = myEngine->LoadMesh("Wall.x");
-	IModel* wallModel = wallMesh->CreateModel(-10.5, 0, 46);
-	IModel* wallModel2 = wallMesh->CreateModel(9.5, 0, 46);
 
-	IMesh* isleMesh = myEngine->LoadMesh("IsleStraight.x");
-	IModel* isleModel = isleMesh->CreateModel(-10, 0, 40);
-	IModel* isleModel2 = isleMesh->CreateModel(10, 0, 40);
-	IModel* isleModel3 = isleMesh->CreateModel(-10, 0, 53);
-	IModel* isleModel4 = isleMesh->CreateModel(10, 0, 53);
-
+	vector<IModel*> collidableObjects;
 	
-	
+	//Loading models from file
+	ifstream file("input.txt");
+	string newLine;
+	IMesh* someMesh{};
+
+	while (file.good())
+	{		
+		getline(file, newLine);
+		if (!isNumber(&newLine)) {
+			someMesh = myEngine->LoadMesh(newLine);
+		}
+		else {
+			float x = stof(newLine);
+			getline(file, newLine);
+			float y = stof(newLine);
+			getline(file, newLine);
+			float z = stof(newLine);
+
+			collidableObjects.push_back(someMesh->CreateModel(x, y, z));			
+		}
+	}
 
 	
 	Racer player(myEngine);
