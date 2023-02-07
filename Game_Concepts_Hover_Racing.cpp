@@ -14,7 +14,18 @@ float frameTime = 0.0f;
 float kMaxSpeed = 50.f;
 float kAcceleration = 90.0f;
 float kAirDrag = 1.0f;
-float kRacerRotateSpeed = 50.0f;
+float kRacerRotateSpeed = 90.0f;
+
+//Variables
+float timeCounter = 4;
+string bigText = to_string(timeCounter);
+
+//Game enums
+enum eGameState {Demo, Count_Down, Stage, Race_Complete, Developer, Paused};
+
+eGameState gameState = Demo;
+eGameState previousGameState;
+
 //Functions
 
 bool isNumber(string* line) {
@@ -45,6 +56,7 @@ typedef struct Racer {
 
 	Racer(I3DEngine* myEngine, float x = 0.0f, float y = 0.0f, float z = -20.0f) {
 		model = myEngine->LoadMesh("Racer.x")->CreateModel(x, y, z);
+		
 	}
 
 	void moveRight(bool move) {
@@ -131,7 +143,9 @@ void main()
 
 	IMesh* groundMesh = myEngine->LoadMesh("ground.x");
 	IModel* groundModel = groundMesh->CreateModel(0, 0, 0);
-
+	
+	IFont* myFont = myEngine->LoadFont("Times New Roman", 36);
+	IFont* myBigRedFont = myEngine->LoadFont("Times New Roman", 56);
 
 	//Loading unmovable models from file
 	vector<IModel*> staticObjects;
@@ -162,7 +176,7 @@ void main()
 	dynamicObjects.push_back(player.model);
 
 	myEngine->StopMouseCapture();
-
+	
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
 	{	
@@ -172,12 +186,64 @@ void main()
 		myEngine->DrawScene();
 		
 		/**** Update your scene each frame here ****/
+		
+		//Game pause
+		if (myEngine->KeyHit(Key_P)) {
+			if (gameState != Paused) {
+				previousGameState = gameState;
+				gameState = Paused;
+			}
+			else {
+				gameState = previousGameState;
+			}
+		}
+		if (gameState == Paused) {
+			myFont->Draw("PAUSED", 0, 0);
+		}
+		//Game Exit
+		if (myEngine->KeyHit(Key_Escape)) {
+			myEngine->Stop();
+		}
 
-		player.moveRight(myEngine->KeyHeld(Key_D));
-		player.moveLeft(myEngine->KeyHeld(Key_A));
-		player.moveForward(myEngine->KeyHeld(Key_W));
-		player.moveBackward(myEngine->KeyHeld(Key_S));
-		player.Collide(&staticObjects);
+		//Major game states
+		//DEMO
+		if (gameState == Demo) {
+			string text = "Press Space to Start";
+			myFont->Draw(text, myEngine->GetWidth()/2 - myFont->MeasureTextWidth(text)/2, myEngine->GetHeight()/2);
+
+			if (myEngine->KeyHit(Key_Space)) {
+				gameState = Count_Down;
+			}
+		}
+		//COUNT_DOWN
+		else if (gameState == Count_Down) {
+			timeCounter = timeCounter - frameTime;
+			bigText = to_string(timeCounter);
+			bigText = bigText[0];
+			if (timeCounter > 1) {
+				myBigRedFont->Draw(bigText, myEngine->GetWidth() / 2 - myFont->MeasureTextWidth(bigText) / 2, myEngine->GetHeight() / 2);
+			}
+			else {
+				bigText = "Go, go, go!";
+				myBigRedFont->Draw(bigText, myEngine->GetWidth() / 2 - myFont->MeasureTextWidth(bigText) / 2, myEngine->GetHeight() / 2);
+				if (timeCounter < 1) {
+					gameState = Stage;
+				}
+			}
+		}
+		//STAGE
+		else if (gameState == Stage) {
+			player.moveRight(myEngine->KeyHeld(Key_D));
+			player.moveLeft(myEngine->KeyHeld(Key_A));
+			player.moveForward(myEngine->KeyHeld(Key_W));
+			player.moveBackward(myEngine->KeyHeld(Key_S));
+			player.Collide(&staticObjects);
+		}
+		//RACE_COMPLETE
+		else if (gameState == Race_Complete) {
+
+		}
+
 	}
 
 	// Delete the 3D engine now we are finished with it
