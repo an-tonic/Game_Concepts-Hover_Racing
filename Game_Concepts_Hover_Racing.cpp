@@ -15,16 +15,20 @@ float kMaxSpeed = 50.f;
 float kAcceleration = 90.0f;
 float kAirDrag = 1.0f;
 float kRacerRotateSpeed = 90.0f;
-
+float kCameraSpeed = 90.0f;
 //Variables
 float timeCounter = 4;
 string bigText = to_string(timeCounter);
 
 //Game enums
-enum eGameState {Demo, Count_Down, Stage, Race_Complete, Developer, Paused};
+enum eGameState {Demo, Count_Down, Stage, RaceComplete, Developer, Paused};
 
-eGameState gameState = Demo;
+eGameState gameState = Stage;
 eGameState previousGameState;
+
+enum eCameraState {Free, ThirdPerson, FirstPerson, Surveillance};
+eCameraState cameraState = Free;
+
 
 //Functions
 
@@ -69,29 +73,99 @@ void loadModelsFromFile(vector<IModel*> &array, string filename, I3DEngine* myEn
 	}
 }
 
+void changeCamera(I3DEngine* myEngine, ICamera* myCamera, Racer* player) {
+	//GAME CAMERA STATES
+	//FREE
+	if (cameraState == Free) {
+		if (myEngine->KeyHeld(Key_Right)) {
+			myCamera->MoveLocalX(kCameraSpeed * frameTime);
+		}
+		else if (myEngine->KeyHeld(Key_Left)) {
+			myCamera->MoveLocalX(-kCameraSpeed * frameTime);
+		}
+		else if (myEngine->KeyHeld(Key_Up)) {
+			myCamera->MoveLocalZ(-kCameraSpeed * frameTime);
+		}
+		else if (myEngine->KeyHeld(Key_Down)) {
+			myCamera->MoveLocalZ(kCameraSpeed * frameTime);
+		}
+
+	//FIRST
+	}
+	else if (cameraState == FirstPerson) {
+		myCamera->SetPosition(player->x(), player->y() + 5, player->z());
+
+		if (myEngine->KeyHeld(Key_D)) {
+			myCamera->RotateLocalY(kRacerRotateSpeed * frameTime);
+		}
+		if (myEngine->KeyHeld(Key_A)) {
+			myCamera->RotateLocalY(-kRacerRotateSpeed * frameTime);
+		}
+	}
+	//THIRD
+	else if (cameraState == ThirdPerson) {
+		myCamera->SetPosition(player->x(), player->y() + 15, player->z() - 15);
+		myCamera->LookAt(player->model);
+
+	}
+
+	//SURVEILLANCE
+	else if (cameraState == Surveillance) {
+		//TODO - Position it somewhere
+		myCamera->SetPosition(10, 10, 10);
+		myCamera->LookAt(player->x(), player->y() + 5, player->z());
+	}
+}
+
+void displayCountDown(IFont* text, I3DEngine* myEngine) {
+	timeCounter = timeCounter - frameTime;
+	bigText = to_string(timeCounter);
+	//Getting just the first number, i.e. integer
+	bigText = bigText[0];
+	if (timeCounter > 1) {
+		text->Draw(bigText, myEngine->GetWidth() / 2 - text->MeasureTextWidth(bigText) / 2, myEngine->GetHeight() / 2);
+	}
+	else {
+		bigText = "Go, go, go!";
+		text->Draw(bigText, myEngine->GetWidth() / 2 - text->MeasureTextWidth(bigText) / 2, myEngine->GetHeight() / 2);
+		if (timeCounter < 1) {
+			gameState = Stage;
+		}
+	}
+
+}
 //Structures
 typedef struct Racer {
 	IModel* model;
 	float kRacerSpeed = 0.0f;
 	float kRacerBackSpeed = 0.0f;
+	
 	bool collided = false;
 
 	Racer(I3DEngine* myEngine, float x = 0.0f, float y = 0.0f, float z = -20.0f) {
 		model = myEngine->LoadMesh("Racer.x")->CreateModel(x, y, z);
 		
 	}
-
+	float x() {
+		return model->GetX();
+	}
+	float y() {
+		return model->GetY();
+	}
+	float z() {
+		return model->GetZ();
+	}
 	void moveRight(bool move) {
 		if (move) {
 			//Rotate right and up. Slowly return back
 			//model->RotateLocalZ(-kRacerRotateSpeed * frameTime);
-			model->RotateY(kRacerRotateSpeed * frameTime);
+			model->RotateLocalY(kRacerRotateSpeed * frameTime);
 		}
 	}
 	void moveLeft(bool move) {
 		if (move) {
 			//model->RotateLocalZ(kRacerRotateSpeed * frameTime);
-			model->RotateY(-kRacerRotateSpeed * frameTime);
+			model->RotateLocalY(-kRacerRotateSpeed * frameTime);
 		}
 	}
 	void moveForward(bool move) {
@@ -155,8 +229,7 @@ void main()
 	//myEngine->AddMediaFolder("./Assessment 2 Media");
 
 	/**** Set up your scene here ****/
-	ICamera* myCamera = myEngine->CreateCamera(kFPS);
-
+	ICamera* myCamera = myEngine->CreateCamera(kManual);
 
 	IMesh* skyMesh = myEngine->LoadMesh("Skybox.x");
 	IModel* skyModel = skyMesh->CreateModel(0, -960, 0);
@@ -173,9 +246,14 @@ void main()
 
 	//Adding moving players
 	vector<IModel*> dynamicObjects;
-	Racer player(myEngine);
-	dynamicObjects.push_back(player.model);
+	Racer* player = &Racer(myEngine);
+	
 
+	
+
+	dynamicObjects.push_back(player->model);
+
+	
 
 	myEngine->StopMouseCapture();
 	
@@ -189,8 +267,9 @@ void main()
 		
 		/**** Update your scene each frame here ****/
 		
-		//GAME CAMERA STATES
-
+		
+		//Change camera
+		changeCamera(myEngine, myCamera, &player);
 
 		//Major game states
 		//DEMO
@@ -204,35 +283,34 @@ void main()
 		}
 		//COUNT_DOWN
 		else if (gameState == Count_Down) {
-			timeCounter = timeCounter - frameTime;
-			bigText = to_string(timeCounter);
-			//Getting just the first number, i.e. integer
-			bigText = bigText[0];
-			if (timeCounter > 1) {
-				myBigRedFont->Draw(bigText, myEngine->GetWidth() / 2 - myFont->MeasureTextWidth(bigText) / 2, myEngine->GetHeight() / 2);
-			}
-			else {
-				bigText = "Go, go, go!";
-				myBigRedFont->Draw(bigText, myEngine->GetWidth() / 2 - myFont->MeasureTextWidth(bigText) / 2, myEngine->GetHeight() / 2);
-				if (timeCounter < 1) {
-					gameState = Stage;
-				}
-			}
+			displayCountDown(myBigRedFont, myEngine);
 		}
 		//STAGE
 		else if (gameState == Stage) {
-			player.moveRight(myEngine->KeyHeld(Key_D));
-			player.moveLeft(myEngine->KeyHeld(Key_A));
-			player.moveForward(myEngine->KeyHeld(Key_W));
-			player.moveBackward(myEngine->KeyHeld(Key_S));
-			player.Collide(&staticObjects);
+			player->moveRight(myEngine->KeyHeld(Key_D));
+			player->moveLeft(myEngine->KeyHeld(Key_A));
+			player->moveForward(myEngine->KeyHeld(Key_W));
+			player->moveBackward(myEngine->KeyHeld(Key_S));
+			player->Collide(&staticObjects);
 		}
 		//RACE_COMPLETE
-		else if (gameState == Race_Complete) {
+		else if (gameState == RaceComplete) {
+			
 
 		}
 
 		//GAME UTILS
+		 
+		if (myEngine->KeyHit(Key_1)) {
+			cameraState = FirstPerson;
+		} else if (myEngine->KeyHit(Key_2)) {
+			cameraState = Free;
+		} else if(myEngine->KeyHit(Key_3)) {
+			cameraState = ThirdPerson;
+		} else if(myEngine->KeyHit(Key_4)) {
+			cameraState = Surveillance;
+		}
+
 		//Game pause
 		if (myEngine->KeyHit(Key_P)) {
 			if (gameState != Paused) {
