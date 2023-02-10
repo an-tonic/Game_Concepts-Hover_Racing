@@ -38,13 +38,35 @@ bool isNumber(string* line) {
 	return false;
 }
 
-
 float vectorLen(IModel* a, IModel* b) {
 	float vectorX = b->GetX() - a->GetX();
 	float vectorY = b->GetY() - a->GetY();
 	float vectorZ = b->GetZ() - a->GetZ();
 
 	return sqrt(vectorX * vectorX + vectorY * vectorY + vectorZ * vectorZ);
+}
+
+void loadModelsFromFile(vector<IModel*> &array, string filename, I3DEngine* myEngine) {
+	ifstream file(filename);
+
+	string newLine;
+	IMesh* someMesh{};
+	while (file.good())
+	{
+		getline(file, newLine);
+		if (!isNumber(&newLine)) {
+			someMesh = myEngine->LoadMesh(newLine);
+		}
+		else {
+			float x = stof(newLine);
+			getline(file, newLine);
+			float y = stof(newLine);
+			getline(file, newLine);
+			float z = stof(newLine);
+
+			array.push_back(someMesh->CreateModel(x, y, z));
+		}
+	}
 }
 
 //Structures
@@ -69,7 +91,6 @@ typedef struct Racer {
 	void moveLeft(bool move) {
 		if (move) {
 			//model->RotateLocalZ(kRacerRotateSpeed * frameTime);
-
 			model->RotateY(-kRacerRotateSpeed * frameTime);
 		}
 	}
@@ -77,7 +98,6 @@ typedef struct Racer {
 		
 		if (move) {
 			model->MoveLocalZ(kRacerSpeed * frameTime);
-
 			if (kRacerSpeed < kMaxSpeed) {
 				kRacerSpeed += kAcceleration * frameTime;
 			}
@@ -105,10 +125,10 @@ typedef struct Racer {
 			}
 		}
 	}
-	void Collide(vector<IModel*>* allobjects) {
+	void Collide(vector<IModel*>* array) {
 		
 		if (!collided) {
-			for (auto obj : *allobjects) {
+			for (auto obj : *array) {
 				if (vectorLen(model, obj) < 10) {
 					kRacerBackSpeed = kRacerSpeed;
 					kRacerSpeed = 0;
@@ -149,31 +169,13 @@ void main()
 
 	//Loading unmovable models from file
 	vector<IModel*> staticObjects;
-	ifstream file("input.txt");
-	string newLine;
-	IMesh* someMesh{};
-	while (file.good())
-	{		
-		getline(file, newLine);
-		if (!isNumber(&newLine)) {
-			someMesh = myEngine->LoadMesh(newLine);
-		}
-		else {
-			float x = stof(newLine);
-			getline(file, newLine);
-			float y = stof(newLine);
-			getline(file, newLine);
-			float z = stof(newLine);
-
-			staticObjects.push_back(someMesh->CreateModel(x, y, z));			
-		}
-	}
+	loadModelsFromFile(staticObjects, "input.txt", myEngine);
 
 	//Adding moving players
 	vector<IModel*> dynamicObjects;
 	Racer player(myEngine);
-
 	dynamicObjects.push_back(player.model);
+
 
 	myEngine->StopMouseCapture();
 	
@@ -187,23 +189,8 @@ void main()
 		
 		/**** Update your scene each frame here ****/
 		
-		//Game pause
-		if (myEngine->KeyHit(Key_P)) {
-			if (gameState != Paused) {
-				previousGameState = gameState;
-				gameState = Paused;
-			}
-			else {
-				gameState = previousGameState;
-			}
-		}
-		if (gameState == Paused) {
-			myFont->Draw("PAUSED", 0, 0);
-		}
-		//Game Exit
-		if (myEngine->KeyHit(Key_Escape)) {
-			myEngine->Stop();
-		}
+		//GAME CAMERA STATES
+
 
 		//Major game states
 		//DEMO
@@ -219,6 +206,7 @@ void main()
 		else if (gameState == Count_Down) {
 			timeCounter = timeCounter - frameTime;
 			bigText = to_string(timeCounter);
+			//Getting just the first number, i.e. integer
 			bigText = bigText[0];
 			if (timeCounter > 1) {
 				myBigRedFont->Draw(bigText, myEngine->GetWidth() / 2 - myFont->MeasureTextWidth(bigText) / 2, myEngine->GetHeight() / 2);
@@ -243,6 +231,26 @@ void main()
 		else if (gameState == Race_Complete) {
 
 		}
+
+		//GAME UTILS
+		//Game pause
+		if (myEngine->KeyHit(Key_P)) {
+			if (gameState != Paused) {
+				previousGameState = gameState;
+				gameState = Paused;
+			}
+			else {
+				gameState = previousGameState;
+			}
+		}
+		if (gameState == Paused) {
+			myFont->Draw("PAUSED", 0, 0);
+		}
+		//Game Exit
+		if (myEngine->KeyHit(Key_Escape)) {
+			myEngine->Stop();
+		}
+
 
 	}
 
