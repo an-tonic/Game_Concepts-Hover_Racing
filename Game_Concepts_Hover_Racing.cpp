@@ -29,6 +29,97 @@ eGameState previousGameState;
 enum eCameraState {Free, ThirdPerson, FirstPerson, Surveillance};
 eCameraState cameraState = Free;
 
+float vectorLen(IModel* a, IModel* b) {
+	float vectorX = b->GetX() - a->GetX();
+	float vectorY = b->GetY() - a->GetY();
+	float vectorZ = b->GetZ() - a->GetZ();
+
+	return sqrt(vectorX * vectorX + vectorY * vectorY + vectorZ * vectorZ);
+}
+
+//Structures
+typedef struct Racer {
+	IModel* model;
+	float kRacerSpeed = 0.0f;
+	float kRacerBackSpeed = 0.0f;
+
+	bool collided = false;
+
+	Racer(I3DEngine* myEngine, float x = 0.0f, float y = 0.0f, float z = -20.0f) {
+		model = myEngine->LoadMesh("Racer.x")->CreateModel(x, y, z);
+
+	}
+	float x() {
+		return model->GetX();
+	}
+	float y() {
+		return model->GetY();
+	}
+	float z() {
+		return model->GetZ();
+	}
+	void moveRight(bool move) {
+		if (move) {
+			//Rotate right and up. Slowly return back
+			//model->RotateLocalZ(-kRacerRotateSpeed * frameTime);
+			model->RotateLocalY(kRacerRotateSpeed * frameTime);
+		}
+	}
+	void moveLeft(bool move) {
+		if (move) {
+			//model->RotateLocalZ(kRacerRotateSpeed * frameTime);
+			model->RotateLocalY(-kRacerRotateSpeed * frameTime);
+		}
+	}
+	void moveForward(bool move) {
+
+		if (move) {
+			model->MoveLocalZ(kRacerSpeed * frameTime);
+			if (kRacerSpeed < kMaxSpeed) {
+				kRacerSpeed += kAcceleration * frameTime;
+			}
+		}
+		else {
+			if (kRacerSpeed > 0) {
+				model->MoveLocalZ(kRacerSpeed * frameTime);
+				kRacerSpeed -= kAcceleration * frameTime * kAirDrag;
+			}
+		}
+
+	}
+	void moveBackward(bool move) {
+		if (move) {
+			model->MoveLocalZ(-kRacerBackSpeed * frameTime);
+
+			if (kRacerBackSpeed < kMaxSpeed / 2) {
+				kRacerBackSpeed += kAcceleration * frameTime;
+			}
+		}
+		else {
+			if (kRacerBackSpeed > 0) {
+				model->MoveLocalZ(-kRacerBackSpeed * frameTime);
+				kRacerBackSpeed -= kAcceleration * frameTime * kAirDrag;
+			}
+		}
+	}
+	void Collide(vector<IModel*>* array) {
+
+		if (!collided) {
+			for (auto obj : *array) {
+				if (vectorLen(model, obj) < 10) {
+					kRacerBackSpeed = kRacerSpeed;
+					kRacerSpeed = 0;
+					collided = true;
+					break;
+				}
+			}
+		}
+		if (kRacerBackSpeed <= 0) {
+			collided = false;
+		}
+
+	}
+};
 
 //Functions
 
@@ -40,14 +131,6 @@ bool isNumber(string* line) {
 		}
 	}
 	return false;
-}
-
-float vectorLen(IModel* a, IModel* b) {
-	float vectorX = b->GetX() - a->GetX();
-	float vectorY = b->GetY() - a->GetY();
-	float vectorZ = b->GetZ() - a->GetZ();
-
-	return sqrt(vectorX * vectorX + vectorY * vectorY + vectorZ * vectorZ);
 }
 
 void loadModelsFromFile(vector<IModel*> &array, string filename, I3DEngine* myEngine) {
@@ -73,7 +156,7 @@ void loadModelsFromFile(vector<IModel*> &array, string filename, I3DEngine* myEn
 	}
 }
 
-void changeCamera(I3DEngine* myEngine, ICamera* myCamera, Racer* player) {
+void changeCamera(I3DEngine* myEngine, ICamera* myCamera, Racer* thePlayer) {
 	//GAME CAMERA STATES
 	//FREE
 	if (cameraState == Free) {
@@ -93,27 +176,38 @@ void changeCamera(I3DEngine* myEngine, ICamera* myCamera, Racer* player) {
 	//FIRST
 	}
 	else if (cameraState == FirstPerson) {
-		myCamera->SetPosition(player->x(), player->y() + 5, player->z());
-
-		if (myEngine->KeyHeld(Key_D)) {
-			myCamera->RotateLocalY(kRacerRotateSpeed * frameTime);
-		}
-		if (myEngine->KeyHeld(Key_A)) {
-			myCamera->RotateLocalY(-kRacerRotateSpeed * frameTime);
-		}
+		myCamera->SetPosition(thePlayer->x(), thePlayer->y() + 5, thePlayer->z());
+		//myCamera->LookAt(thePlayer->model);
+		
 	}
 	//THIRD
 	else if (cameraState == ThirdPerson) {
-		myCamera->SetPosition(player->x(), player->y() + 15, player->z() - 15);
-		myCamera->LookAt(player->model);
-
+		//
+		
+		
+		if (myEngine->KeyHeld(Key_A)) {
+			myCamera->MoveLocalX(kCameraSpeed * frameTime);
+			myCamera->LookAt(thePlayer->model);
+		}
+		else if (myEngine->KeyHeld(Key_D)) {
+			myCamera->MoveLocalX(-kCameraSpeed * frameTime);
+			myCamera->LookAt(thePlayer->model);
+		}
+		else if (myEngine->KeyHeld(Key_W)) {
+			myCamera->MoveZ(thePlayer->kRacerSpeed * frameTime);
+			myCamera->LookAt(thePlayer->model);
+		}
+		else if (myEngine->KeyHeld(Key_D)) {
+			myCamera->MoveZ(thePlayer->kRacerSpeed * frameTime);
+			myCamera->LookAt(thePlayer->model);
+		}
 	}
 
 	//SURVEILLANCE
 	else if (cameraState == Surveillance) {
 		//TODO - Position it somewhere
 		myCamera->SetPosition(10, 10, 10);
-		myCamera->LookAt(player->x(), player->y() + 5, player->z());
+		myCamera->LookAt(thePlayer->x(), thePlayer->y() + 5, thePlayer->z());
 	}
 }
 
@@ -134,89 +228,7 @@ void displayCountDown(IFont* text, I3DEngine* myEngine) {
 	}
 
 }
-//Structures
-typedef struct Racer {
-	IModel* model;
-	float kRacerSpeed = 0.0f;
-	float kRacerBackSpeed = 0.0f;
-	
-	bool collided = false;
 
-	Racer(I3DEngine* myEngine, float x = 0.0f, float y = 0.0f, float z = -20.0f) {
-		model = myEngine->LoadMesh("Racer.x")->CreateModel(x, y, z);
-		
-	}
-	float x() {
-		return model->GetX();
-	}
-	float y() {
-		return model->GetY();
-	}
-	float z() {
-		return model->GetZ();
-	}
-	void moveRight(bool move) {
-		if (move) {
-			//Rotate right and up. Slowly return back
-			//model->RotateLocalZ(-kRacerRotateSpeed * frameTime);
-			model->RotateLocalY(kRacerRotateSpeed * frameTime);
-		}
-	}
-	void moveLeft(bool move) {
-		if (move) {
-			//model->RotateLocalZ(kRacerRotateSpeed * frameTime);
-			model->RotateLocalY(-kRacerRotateSpeed * frameTime);
-		}
-	}
-	void moveForward(bool move) {
-		
-		if (move) {
-			model->MoveLocalZ(kRacerSpeed * frameTime);
-			if (kRacerSpeed < kMaxSpeed) {
-				kRacerSpeed += kAcceleration * frameTime;
-			}
-		}
-		else {
-			if (kRacerSpeed > 0) {
-				model->MoveLocalZ(kRacerSpeed * frameTime);
-				kRacerSpeed -= kAcceleration * frameTime * kAirDrag;
-			}
-		}
-		
-	}
-	void moveBackward(bool move) {
-		if (move) {
-			model->MoveLocalZ(-kRacerBackSpeed * frameTime);
-
-			if (kRacerBackSpeed < kMaxSpeed / 2) {
-				kRacerBackSpeed += kAcceleration * frameTime;
-			}
-		}
-		else {
-			if (kRacerBackSpeed > 0) {
-				model->MoveLocalZ(-kRacerBackSpeed * frameTime);
-				kRacerBackSpeed -= kAcceleration * frameTime * kAirDrag;
-			}
-		}
-	}
-	void Collide(vector<IModel*>* array) {
-		
-		if (!collided) {
-			for (auto obj : *array) {
-				if (vectorLen(model, obj) < 10) {
-					kRacerBackSpeed = kRacerSpeed;
-					kRacerSpeed = 0;
-					collided = true;
-					break;
-				}
-			}
-		}
-		if (kRacerBackSpeed <= 0) {
-			collided = false;
-		}
-
-	}
-};
 
 void main()
 {
@@ -249,8 +261,6 @@ void main()
 	Racer* player = &Racer(myEngine);
 	
 
-	
-
 	dynamicObjects.push_back(player->model);
 
 	
@@ -269,7 +279,7 @@ void main()
 		
 		
 		//Change camera
-		changeCamera(myEngine, myCamera, &player);
+		changeCamera(myEngine, myCamera, player);
 
 		//Major game states
 		//DEMO
@@ -303,12 +313,18 @@ void main()
 		 
 		if (myEngine->KeyHit(Key_1)) {
 			cameraState = FirstPerson;
+			myCamera->AttachToParent(player->model);		
 		} else if (myEngine->KeyHit(Key_2)) {
 			cameraState = Free;
+			myCamera->DetachFromParent();
 		} else if(myEngine->KeyHit(Key_3)) {
+			myCamera->SetLocalPosition(player->x(), player->y() + 15, player->z() - 15);
 			cameraState = ThirdPerson;
+			myCamera->RotateLocalX(45);
+			//myCamera->AttachToParent(player->model);
 		} else if(myEngine->KeyHit(Key_4)) {
 			cameraState = Surveillance;
+			myCamera->DetachFromParent();
 		}
 
 		//Game pause
