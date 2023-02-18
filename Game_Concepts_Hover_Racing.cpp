@@ -16,6 +16,8 @@ float kAcceleration = 90.0f;
 float kAirDrag = 1.0f;
 float kRacerRotateSpeed = 90.0f;
 float kCameraSpeed = 90.0f;
+float avgFrameTime = 0.0f;
+long long frameCount = 0;
 //Variables
 float timeCounter = 4;
 string bigText = to_string(timeCounter);
@@ -42,7 +44,7 @@ typedef struct Racer {
 	IModel* model;
 	float kRacerSpeed = 0.0f;
 	float kRacerBackSpeed = 0.0f;
-
+	float matrix[4][4];
 	bool collided = false;
 
 	Racer(I3DEngine* myEngine, float x = 0.0f, float y = 0.0f, float z = -20.0f) {
@@ -159,55 +161,46 @@ void loadModelsFromFile(vector<IModel*> &array, string filename, I3DEngine* myEn
 void changeCamera(I3DEngine* myEngine, ICamera* myCamera, Racer* thePlayer) {
 	//GAME CAMERA STATES
 	//FREE
-	if (cameraState == Free) {
-		if (myEngine->KeyHeld(Key_Right)) {
-			myCamera->MoveLocalX(kCameraSpeed * frameTime);
+	if (myEngine->AnyKeyHit() || myEngine->AnyKeyHeld()) {
+		if (cameraState == Free) {
+			if (myEngine->KeyHeld(Key_Right)) {
+				myCamera->MoveLocalX(kCameraSpeed * frameTime);
+			}
+			else if (myEngine->KeyHeld(Key_Left)) {
+				myCamera->MoveLocalX(-kCameraSpeed * frameTime);
+			}
+			else if (myEngine->KeyHeld(Key_Up)) {
+				myCamera->MoveLocalZ(-kCameraSpeed * frameTime);
+			}
+			else if (myEngine->KeyHeld(Key_Down)) {
+				myCamera->MoveLocalZ(kCameraSpeed * frameTime);
+			}
+
+			//FIRST
 		}
-		else if (myEngine->KeyHeld(Key_Left)) {
-			myCamera->MoveLocalX(-kCameraSpeed * frameTime);
+		else if (cameraState == FirstPerson) {
+			myCamera->SetPosition(thePlayer->x(), thePlayer->y() + 5, thePlayer->z());
+
+			thePlayer->model->GetMatrix(&thePlayer->matrix[0][0]);
+
+			myCamera->LookAt(thePlayer->x() + thePlayer->matrix[2][0], thePlayer->y() + 5, thePlayer->z() + thePlayer->matrix[2][2]);
+
 		}
-		else if (myEngine->KeyHeld(Key_Up)) {
-			myCamera->MoveLocalZ(-kCameraSpeed * frameTime);
-		}
-		else if (myEngine->KeyHeld(Key_Down)) {
-			myCamera->MoveLocalZ(kCameraSpeed * frameTime);
+		//THIRD
+		else if (cameraState == ThirdPerson) {
+			//
+			thePlayer->model->GetMatrix(&thePlayer->matrix[0][0]);
+			myCamera->SetPosition(thePlayer->x() - thePlayer->matrix[2][0] * 20, thePlayer->y() - thePlayer->matrix[2][1] * 20 + 10, thePlayer->z() - thePlayer->matrix[2][2] * 20);
+			myCamera->LookAt(thePlayer->model);
+
 		}
 
-	//FIRST
-	}
-	else if (cameraState == FirstPerson) {
-		myCamera->SetPosition(thePlayer->x(), thePlayer->y() + 5, thePlayer->z());
-		//myCamera->LookAt(thePlayer->model);
-		
-	}
-	//THIRD
-	else if (cameraState == ThirdPerson) {
-		//
-		
-		
-		if (myEngine->KeyHeld(Key_A)) {
-			myCamera->MoveLocalX(kCameraSpeed * frameTime);
+		//SURVEILLANCE
+		else if (cameraState == Surveillance) {
+			//TODO - Position it somewhere
+			myCamera->SetPosition(10, 10, 10);
 			myCamera->LookAt(thePlayer->model);
 		}
-		else if (myEngine->KeyHeld(Key_D)) {
-			myCamera->MoveLocalX(-kCameraSpeed * frameTime);
-			myCamera->LookAt(thePlayer->model);
-		}
-		else if (myEngine->KeyHeld(Key_W)) {
-			myCamera->MoveZ(thePlayer->kRacerSpeed * frameTime);
-			myCamera->LookAt(thePlayer->model);
-		}
-		else if (myEngine->KeyHeld(Key_D)) {
-			myCamera->MoveZ(thePlayer->kRacerSpeed * frameTime);
-			myCamera->LookAt(thePlayer->model);
-		}
-	}
-
-	//SURVEILLANCE
-	else if (cameraState == Surveillance) {
-		//TODO - Position it somewhere
-		myCamera->SetPosition(10, 10, 10);
-		myCamera->LookAt(thePlayer->x(), thePlayer->y() + 5, thePlayer->z());
 	}
 }
 
@@ -237,8 +230,8 @@ void main()
 	myEngine->StartWindowed();
 
 	// Add default folder for meshes and other media
-	myEngine->AddMediaFolder( "C:\\Users\\aserdyukov\\source\\repos\\Game_Concepts_Hover_Racing\\Assesment 2 Resources" );
-	//myEngine->AddMediaFolder("./Assessment 2 Media");
+	myEngine->AddMediaFolder( "C:\\Users\\an-tonic\\source\\repos\\Game_Concepts-Hover_Racing\\Assesment 2 Resources" );
+	myEngine->AddMediaFolder("./Assessment 2 Media");
 
 	/**** Set up your scene here ****/
 	ICamera* myCamera = myEngine->CreateCamera(kManual);
@@ -270,6 +263,10 @@ void main()
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
 	{	
+		
+		
+		myFont->Draw(to_string(1/frameTime), 0, 0);
+
 		
 		frameTime = myEngine->Timer();
 		// Draw the scene
@@ -313,15 +310,18 @@ void main()
 		 
 		if (myEngine->KeyHit(Key_1)) {
 			cameraState = FirstPerson;
-			myCamera->AttachToParent(player->model);		
+			myCamera->AttachToParent(player->model);
+
 		} else if (myEngine->KeyHit(Key_2)) {
 			cameraState = Free;
 			myCamera->DetachFromParent();
+
 		} else if(myEngine->KeyHit(Key_3)) {
-			myCamera->SetLocalPosition(player->x(), player->y() + 15, player->z() - 15);
+			myCamera->AttachToParent(player->model);
 			cameraState = ThirdPerson;
-			myCamera->RotateLocalX(45);
-			//myCamera->AttachToParent(player->model);
+			/*myCamera->ResetOrientation();
+			myCamera->RotateLocalX(45);*/
+			
 		} else if(myEngine->KeyHit(Key_4)) {
 			cameraState = Surveillance;
 			myCamera->DetachFromParent();
