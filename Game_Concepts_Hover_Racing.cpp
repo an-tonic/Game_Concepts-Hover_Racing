@@ -25,7 +25,7 @@ string bigText = to_string(timeCounter);
 //Game enums
 enum eGameState {Demo, Count_Down, Stage, RaceComplete, Developer, Paused};
 
-eGameState gameState = Stage;
+eGameState gameState = Demo;
 eGameState previousGameState;
 
 enum eCameraState {Free, ThirdPerson, FirstPerson, Surveillance};
@@ -161,24 +161,29 @@ void loadModelsFromFile(vector<IModel*> &array, string filename, I3DEngine* myEn
 void changeCamera(I3DEngine* myEngine, ICamera* myCamera, Racer* thePlayer) {
 	//GAME CAMERA STATES
 	//FREE
-	if (myEngine->AnyKeyHit() || myEngine->AnyKeyHeld()) {
-		if (cameraState == Free) {
-			if (myEngine->KeyHeld(Key_Right)) {
-				myCamera->MoveLocalX(kCameraSpeed * frameTime);
-			}
-			else if (myEngine->KeyHeld(Key_Left)) {
-				myCamera->MoveLocalX(-kCameraSpeed * frameTime);
-			}
-			else if (myEngine->KeyHeld(Key_Up)) {
-				myCamera->MoveLocalZ(-kCameraSpeed * frameTime);
-			}
-			else if (myEngine->KeyHeld(Key_Down)) {
-				myCamera->MoveLocalZ(kCameraSpeed * frameTime);
-			}
+	if (cameraState == Free) {
 
-			//FIRST
+		myCamera->RotateY(myEngine->GetMouseMovementX() * frameTime * kCameraSpeed);
+		myCamera->RotateLocalX(myEngine->GetMouseMovementY()* frameTime * kCameraSpeed);
+
+		if (myEngine->KeyHeld(Key_Right)) {
+			myCamera->MoveLocalX(kCameraSpeed * frameTime);
 		}
-		else if (cameraState == FirstPerson) {
+		else if (myEngine->KeyHeld(Key_Left)) {
+			myCamera->MoveLocalX(-kCameraSpeed * frameTime);
+		}
+		else if (myEngine->KeyHeld(Key_Up)) {
+			myCamera->MoveLocalZ(kCameraSpeed * frameTime);
+		}
+		else if (myEngine->KeyHeld(Key_Down)) {
+			myCamera->MoveLocalZ(-kCameraSpeed * frameTime);
+		}
+	}
+	
+	if (myEngine->AnyKeyHit() || myEngine->AnyKeyHeld()) {
+		
+		//FIRST
+		if (cameraState == FirstPerson) {
 			myCamera->SetPosition(thePlayer->x(), thePlayer->y() + 5, thePlayer->z());
 
 			thePlayer->model->GetMatrix(&thePlayer->matrix[0][0]);
@@ -215,13 +220,21 @@ void displayCountDown(IFont* text, I3DEngine* myEngine) {
 	else {
 		bigText = "Go, go, go!";
 		text->Draw(bigText, myEngine->GetWidth() / 2 - text->MeasureTextWidth(bigText) / 2, myEngine->GetHeight() / 2);
-		if (timeCounter < 1) {
+		if (timeCounter < 0) {
 			gameState = Stage;
 		}
 	}
 
 }
 
+void startGame(IFont* myFont, I3DEngine* myEngine) {
+	string text = "Press Space to Start";
+	myFont->Draw(text, myEngine->GetWidth() / 2 - myFont->MeasureTextWidth(text) / 2, myEngine->GetHeight() / 2);
+
+	if (myEngine->KeyHit(Key_Space)) {
+		gameState = Count_Down;
+	}
+}
 
 void main()
 {
@@ -258,7 +271,7 @@ void main()
 
 	
 
-	myEngine->StopMouseCapture();
+	myEngine->StartMouseCapture();
 	
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
@@ -281,12 +294,7 @@ void main()
 		//Major game states
 		//DEMO
 		if (gameState == Demo) {
-			string text = "Press Space to Start";
-			myFont->Draw(text, myEngine->GetWidth()/2 - myFont->MeasureTextWidth(text)/2, myEngine->GetHeight()/2);
-
-			if (myEngine->KeyHit(Key_Space)) {
-				gameState = Count_Down;
-			}
+			displayCountDown(myFont, myEngine);
 		}
 		//COUNT_DOWN
 		else if (gameState == Count_Down) {
@@ -307,21 +315,22 @@ void main()
 		}
 
 		//GAME UTILS
-		 
+		//FIRST
 		if (myEngine->KeyHit(Key_1)) {
 			cameraState = FirstPerson;
 			myCamera->AttachToParent(player->model);
 
+		//FREE
 		} else if (myEngine->KeyHit(Key_2)) {
 			cameraState = Free;
 			myCamera->DetachFromParent();
 
+		//THIRD
 		} else if(myEngine->KeyHit(Key_3)) {
 			myCamera->AttachToParent(player->model);
 			cameraState = ThirdPerson;
-			/*myCamera->ResetOrientation();
-			myCamera->RotateLocalX(45);*/
-			
+		
+		//Survaliance
 		} else if(myEngine->KeyHit(Key_4)) {
 			cameraState = Surveillance;
 			myCamera->DetachFromParent();
