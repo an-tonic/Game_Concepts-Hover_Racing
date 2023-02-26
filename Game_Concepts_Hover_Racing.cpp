@@ -16,7 +16,11 @@ float kAcceleration = 90.0f;
 float kAirDrag = 1.0f;
 float kRacerRotateSpeed = 90.0f;
 float kCameraSpeed = 190.0f;
+float kNewModelSpeed = 1.0f;
 IModel* newModel = nullptr;
+IMesh* newMesh = nullptr;
+string newModelName = "";
+string inputfile = "input.txt";
 long long frameCount = 0;
 //Variables
 float timeCounter = 4;
@@ -152,8 +156,12 @@ void loadModelsFromFile(vector<IModel*> &array, string filename, I3DEngine* myEn
 			float y = stof(newLine);
 			getline(file, newLine);
 			float z = stof(newLine);
+			getline(file, newLine);
+			float rotate = stof(newLine);
+
 
 			array.push_back(someMesh->CreateModel(x, y, z));
+			array.back()->RotateLocalY(rotate);
 		}
 	}
 }
@@ -242,68 +250,78 @@ IModel* loadModel(I3DEngine* myEngine, ICamera* myCamera, IModel* model) {
 	
 	if (model == nullptr) {
 		if (myEngine->KeyHit(Key_1)) {
-			IMesh* mesh = myEngine->LoadMesh("Checkpoint.x");
-			model = mesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
+			newModelName = "Checkpoint.x";
 		}
 		else if (myEngine->KeyHit(Key_2)) {
-			IMesh* mesh = myEngine->LoadMesh("IsleCorner.x");
-			model = mesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
+			newModelName = "IsleCorner.x";
 		}
 		else if (myEngine->KeyHit(Key_3)) {
-			IMesh* mesh = myEngine->LoadMesh("IsleCross.x");
-			model = mesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
+			newModelName = "IsleCross.x";
 		}
 		else if (myEngine->KeyHit(Key_4)) {
-			IMesh* mesh = myEngine->LoadMesh("IsleStraight.x");
-			model = mesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
+			newModelName = "IsleStraight.x";
 		}
 		else if (myEngine->KeyHit(Key_5)) {
-			IMesh* mesh = myEngine->LoadMesh("IsleTee.x");
-			model = mesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
+			newModelName = "IsleTee.x";
 		}
 		else if (myEngine->KeyHit(Key_6)) {
-			IMesh* mesh = myEngine->LoadMesh("Wall.x");
-			model = mesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
+			newModelName = "IsleCorner.x";
 		}
 		else if (myEngine->KeyHit(Key_7)) {
-			IMesh* mesh = myEngine->LoadMesh("IsleCorner.x");
-			model = mesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
+			newModelName = "Wall.x";
+		}
+		if (newModelName != "") {
+			newMesh = myEngine->LoadMesh(newModelName);
+			model = newMesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
 		}
 	}
+	
 	return model;
 }
 
-void moveNewModel(I3DEngine* myEngine) {
+void moveNewModel(I3DEngine* myEngine, ICamera* myCamera) {
 
 	
+	if (newMesh != nullptr) {
+		if (myEngine->KeyHeld(Key_D)) {
+			newModel->MoveX(kNewModelSpeed * frameTime * myCamera->GetY());
+		}
+		else if (myEngine->KeyHeld(Key_A)) {
+			newModel->MoveX(-kNewModelSpeed * frameTime * myCamera->GetY());
+		}
+		else if (myEngine->KeyHeld(Key_W)) {
+			newModel->MoveZ(kNewModelSpeed * frameTime * myCamera->GetY());
+		}
+		else if (myEngine->KeyHeld(Key_S)) {
+			newModel->MoveZ(-kNewModelSpeed * frameTime * myCamera->GetY());
+		}
+		else if (myEngine->KeyHeld(Key_E)) {
+			newModel->RotateLocalY(kNewModelSpeed * frameTime * myCamera->GetY());
+		}
+		else if (myEngine->KeyHeld(Key_E)) {
+			newModel->RotateLocalY(kNewModelSpeed * frameTime * myCamera->GetY());
+		}
+		else if (myEngine->KeyHeld(Key_Q)) {
+			newModel->RotateLocalY(-kNewModelSpeed * frameTime * myCamera->GetY());
+		}
+		else if (myEngine->KeyHit(Key_Space)) {
+			ofstream outfile;
+			outfile.open(inputfile, ios::app);
+			outfile << "\n" << newModelName << "\n";
+			outfile << newModel->GetX() << "\n" << newModel->GetY() << "\n" << newModel->GetZ() << "\n";
+			//TODO write rotate
+			float matrix[4][4];
+			newModel->GetMatrix(&matrix[0][0]);
 
-	if (myEngine->KeyHeld(Key_D)) {
-		newModel->MoveLocalX(kCameraSpeed * frameTime);
+			outfile << to_string(90 - atan2(matrix[2][2], matrix[2][0]) * (180 / 3.14159265));
+			newModel = nullptr;
+		}
+		else if (myEngine->KeyHit(Key_Back)) {
+			newModelName = "";
+			newMesh->RemoveModel(newModel);
+			newModel = nullptr;
+		}
 	}
-	else if (myEngine->KeyHeld(Key_A)) {
-		newModel->MoveLocalX(-kCameraSpeed * frameTime);
-	}
-	else if (myEngine->KeyHeld(Key_W)) {
-		newModel->MoveLocalZ(kCameraSpeed * frameTime);
-	}
-	else if (myEngine->KeyHeld(Key_S)) {
-		newModel->MoveLocalZ(-kCameraSpeed * frameTime);
-	}
-	else if (myEngine->KeyHeld(Key_E)) {
-		newModel->RotateLocalY(kCameraSpeed * frameTime);
-	}
-	else if (myEngine->KeyHeld(Key_E)) {
-		newModel->RotateLocalY(kCameraSpeed * frameTime);
-	}
-	else if (myEngine->KeyHeld(Key_Q)) {
-		newModel->RotateLocalY(-kCameraSpeed * frameTime);
-	}
-	else if (myEngine->KeyHit(Key_Space)) {
-		//TODO write to input
-		newModel = nullptr;
-		
-	}
-	
 }
 
 void main()
@@ -321,6 +339,8 @@ void main()
 
 	IMesh* skyMesh = myEngine->LoadMesh("Skybox.x");
 	IModel* skyModel = skyMesh->CreateModel(0, -960, 0);
+
+	
 
 	IMesh* groundMesh = myEngine->LoadMesh("ground.x");
 	IModel* groundModel = groundMesh->CreateModel(0, 0, 0);
@@ -388,7 +408,7 @@ void main()
 				newModel = loadModel(myEngine, myCamera, newModel);
 			}
 			if (newModel != nullptr) {
-				moveNewModel(myEngine);
+				moveNewModel(myEngine, myCamera);
 			}
 
 			
