@@ -15,8 +15,8 @@ float kMaxSpeed = 50.f;
 float kAcceleration = 90.0f;
 float kAirDrag = 1.0f;
 float kRacerRotateSpeed = 90.0f;
-float kCameraSpeed = 90.0f;
-float avgFrameTime = 0.0f;
+float kCameraSpeed = 190.0f;
+IModel* newModel = nullptr;
 long long frameCount = 0;
 //Variables
 float timeCounter = 4;
@@ -236,6 +236,76 @@ void startGame(IFont* myFont, I3DEngine* myEngine) {
 	}
 }
 
+IModel* loadModel(I3DEngine* myEngine, ICamera* myCamera, IModel* model) {
+	
+	
+	
+	if (model == nullptr) {
+		if (myEngine->KeyHit(Key_1)) {
+			IMesh* mesh = myEngine->LoadMesh("Checkpoint.x");
+			model = mesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
+		}
+		else if (myEngine->KeyHit(Key_2)) {
+			IMesh* mesh = myEngine->LoadMesh("IsleCorner.x");
+			model = mesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
+		}
+		else if (myEngine->KeyHit(Key_3)) {
+			IMesh* mesh = myEngine->LoadMesh("IsleCross.x");
+			model = mesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
+		}
+		else if (myEngine->KeyHit(Key_4)) {
+			IMesh* mesh = myEngine->LoadMesh("IsleStraight.x");
+			model = mesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
+		}
+		else if (myEngine->KeyHit(Key_5)) {
+			IMesh* mesh = myEngine->LoadMesh("IsleTee.x");
+			model = mesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
+		}
+		else if (myEngine->KeyHit(Key_6)) {
+			IMesh* mesh = myEngine->LoadMesh("Wall.x");
+			model = mesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
+		}
+		else if (myEngine->KeyHit(Key_7)) {
+			IMesh* mesh = myEngine->LoadMesh("IsleCorner.x");
+			model = mesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
+		}
+	}
+	return model;
+}
+
+void moveNewModel(I3DEngine* myEngine) {
+
+	
+
+	if (myEngine->KeyHeld(Key_D)) {
+		newModel->MoveLocalX(kCameraSpeed * frameTime);
+	}
+	else if (myEngine->KeyHeld(Key_A)) {
+		newModel->MoveLocalX(-kCameraSpeed * frameTime);
+	}
+	else if (myEngine->KeyHeld(Key_W)) {
+		newModel->MoveLocalZ(kCameraSpeed * frameTime);
+	}
+	else if (myEngine->KeyHeld(Key_S)) {
+		newModel->MoveLocalZ(-kCameraSpeed * frameTime);
+	}
+	else if (myEngine->KeyHeld(Key_E)) {
+		newModel->RotateLocalY(kCameraSpeed * frameTime);
+	}
+	else if (myEngine->KeyHeld(Key_E)) {
+		newModel->RotateLocalY(kCameraSpeed * frameTime);
+	}
+	else if (myEngine->KeyHeld(Key_Q)) {
+		newModel->RotateLocalY(-kCameraSpeed * frameTime);
+	}
+	else if (myEngine->KeyHit(Key_Space)) {
+		//TODO write to input
+		newModel = nullptr;
+		
+	}
+	
+}
+
 void main()
 {
 	// Create a 3D engine (using TLX engine here) and open a window for it
@@ -275,21 +345,20 @@ void main()
 	
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
-	{	
-		
-		
-		myFont->Draw(to_string(1/frameTime), 0, 0);
+	{
 
-		
+
+		myFont->Draw(to_string(1 / frameTime), 0, 0);
+
+
 		frameTime = myEngine->Timer();
 		// Draw the scene
 		myEngine->DrawScene();
-		
+
 		/**** Update your scene each frame here ****/
+
+
 		
-		
-		//Change camera
-		changeCamera(myEngine, myCamera, player);
 
 		//Major game states
 		//DEMO
@@ -310,44 +379,74 @@ void main()
 		}
 		//RACE_COMPLETE
 		else if (gameState == RaceComplete) {
+
+
+		}
+		else if (gameState == Developer) {
 			
-
-		}
-
-		//GAME UTILS
-		//FIRST
-		if (myEngine->KeyHit(Key_1)) {
-			cameraState = FirstPerson;
-			myCamera->AttachToParent(player->model);
-
-		//FREE
-		} else if (myEngine->KeyHit(Key_2)) {
-			cameraState = Free;
-			myCamera->DetachFromParent();
-
-		//THIRD
-		} else if(myEngine->KeyHit(Key_3)) {
-			myCamera->AttachToParent(player->model);
-			cameraState = ThirdPerson;
-		
-		//Survaliance
-		} else if(myEngine->KeyHit(Key_4)) {
-			cameraState = Surveillance;
-			myCamera->DetachFromParent();
-		}
-
-		//Game pause
-		if (myEngine->KeyHit(Key_P)) {
-			if (gameState != Paused) {
-				previousGameState = gameState;
-				gameState = Paused;
+			if (myEngine->AnyKeyHit()) {			
+				newModel = loadModel(myEngine, myCamera, newModel);
 			}
-			else {
-				gameState = previousGameState;
+			if (newModel != nullptr) {
+				moveNewModel(myEngine);
 			}
+
+			
 		}
-		if (gameState == Paused) {
-			myFont->Draw("PAUSED", 0, 0);
+		//Change camera
+		changeCamera(myEngine, myCamera, player);
+
+		if (gameState != Developer) {
+			
+			
+			//GAME UTILS
+
+			//FIRST
+			if (myEngine->KeyHit(Key_1)) {
+				cameraState = FirstPerson;
+				myCamera->AttachToParent(player->model);
+
+				//FREE
+			}
+			else if (myEngine->KeyHit(Key_2)) {
+				cameraState = Free;
+				myCamera->DetachFromParent();
+
+				//THIRD
+			}
+			else if (myEngine->KeyHit(Key_3)) {
+				myCamera->AttachToParent(player->model);
+				cameraState = ThirdPerson;
+
+				//Survaliance
+			}
+			else if (myEngine->KeyHit(Key_4)) {
+				cameraState = Surveillance;
+				myCamera->DetachFromParent();
+			}
+			//Developer mode
+			else if (myEngine->KeyHit(Key_F9)) {
+				gameState = Developer;
+				cameraState = Free;
+				myCamera->DetachFromParent();
+				myCamera->SetPosition(0, 300, 0);
+				myCamera->ResetOrientation();
+				myCamera->RotateX(90);
+			}
+
+			//Game pause
+			if (myEngine->KeyHit(Key_P)) {
+				if (gameState != Paused) {
+					previousGameState = gameState;
+					gameState = Paused;
+				}
+				else {
+					gameState = previousGameState;
+				}
+			}
+			if (gameState == Paused) {
+				myFont->Draw("PAUSED", 0, 0);
+			}
 		}
 		//Game Exit
 		if (myEngine->KeyHit(Key_Escape)) {
