@@ -21,7 +21,9 @@ long long frameCount = 0;
 //Variables
 float timeCounter = 4;
 string bigText = to_string(timeCounter);
-
+float pV1[3];
+float pV2[3];
+float pV3[3];
 //Game enums
 enum eGameState {Demo, Count_Down, Stage, RaceComplete, Developer, Paused};
 
@@ -77,6 +79,13 @@ typedef struct Racer {
 
 		if (move) {
 			model->MoveLocalZ(kRacerSpeed * frameTime);
+			model->GetMesh()->BeginEnumTriangles();
+			model->GetMesh()->GetTriangle(pV1, pV2, pV3);
+			cout << pV1[0] << ", " << pV1[1] << ", " << pV1[2] << "\n";
+			/*cout << pV2[0] << ", " << pV2[1] << ", " << pV2[2] << "\n";
+			cout << pV3[0] << ", " << pV3[1] << ", " << pV3[2] << "\n";*/
+			model->GetMesh()->EndEnumTriangles();
+
 			if (kRacerSpeed < kMaxSpeed) {
 				kRacerSpeed += kAcceleration * frameTime;
 			}
@@ -243,8 +252,8 @@ void main()
 	myEngine->StartWindowed();
 
 	// Add default folder for meshes and other media
-	myEngine->AddMediaFolder( "C:\\Users\\an-tonic\\source\\repos\\Game_Concepts-Hover_Racing\\Assesment 2 Resources" );
-	myEngine->AddMediaFolder("./Assessment 2 Media");
+	//myEngine->AddMediaFolder( "C:\\Users\\an-tonic\\source\\repos\\Game_Concepts-Hover_Racing\\Assesment 2 Resources" );
+	myEngine->AddMediaFolder("./Resources");
 
 	/**** Set up your scene here ****/
 	ICamera* myCamera = myEngine->CreateCamera(kManual);
@@ -264,14 +273,21 @@ void main()
 
 	//Adding moving players
 	vector<IModel*> dynamicObjects;
-	Racer* player = &Racer(myEngine);
+	Racer* player = &Racer(myEngine, 10, 10, 10);
 	
 
 	dynamicObjects.push_back(player->model);
+	myEngine->StopMouseCapture();
+
 
 	
 
-	myEngine->StartMouseCapture();
+	
+
+	
+	
+
+
 	
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
