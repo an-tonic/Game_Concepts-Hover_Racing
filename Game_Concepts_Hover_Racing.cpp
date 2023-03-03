@@ -79,13 +79,6 @@ typedef struct Racer {
 
 		if (move) {
 			model->MoveLocalZ(kRacerSpeed * frameTime);
-			model->GetMesh()->BeginEnumTriangles();
-			model->GetMesh()->GetTriangle(pV1, pV2, pV3);
-			cout << pV1[0] << ", " << pV1[1] << ", " << pV1[2] << "\n";
-			/*cout << pV2[0] << ", " << pV2[1] << ", " << pV2[2] << "\n";
-			cout << pV3[0] << ", " << pV3[1] << ", " << pV3[2] << "\n";*/
-			model->GetMesh()->EndEnumTriangles();
-
 			if (kRacerSpeed < kMaxSpeed) {
 				kRacerSpeed += kAcceleration * frameTime;
 			}
@@ -273,22 +266,12 @@ void main()
 
 	//Adding moving players
 	vector<IModel*> dynamicObjects;
-	Racer* player = &Racer(myEngine, 10, 10, 10);
+	Racer* player = &Racer(myEngine);
 	
 
 	dynamicObjects.push_back(player->model);
 	myEngine->StopMouseCapture();
 
-
-	
-
-	
-
-	
-	
-
-
-	
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
 	{	
@@ -318,6 +301,7 @@ void main()
 		}
 		//STAGE
 		else if (gameState == Stage) {
+
 			player->moveRight(myEngine->KeyHeld(Key_D));
 			player->moveLeft(myEngine->KeyHeld(Key_A));
 			player->moveForward(myEngine->KeyHeld(Key_W));
