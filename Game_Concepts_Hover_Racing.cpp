@@ -18,6 +18,8 @@ float kRacerRotateSpeed = 90.0f;
 float kCameraSpeed = 90.0f;
 float avgFrameTime = 0.0f;
 long long frameCount = 0;
+int kCameraOffset = 22;
+
 //Variables
 float timeCounter = 4;
 string bigText = to_string(timeCounter);
@@ -40,6 +42,13 @@ float vectorLen(IModel* a, IModel* b) {
 
 	return sqrt(vectorX * vectorX + vectorY * vectorY + vectorZ * vectorZ);
 }
+
+struct Vector2 {
+	float x = -10000;
+	float _x = 10000;
+	float z = -10000;
+	float _z = 10000;
+};
 
 //Structures
 typedef struct Racer {
@@ -137,7 +146,29 @@ bool isNumber(string* line) {
 	return false;
 }
 
-void loadModelsFromFile(vector<IModel*> &array, string filename, I3DEngine* myEngine) {
+void findBounds(IMesh* someMesh, Vector2* maxPoint) {
+	someMesh->BeginEnumVertices();
+	while (someMesh->GetVertex(pV1))
+	{
+
+		if (pV1[0] > maxPoint->x) {
+			maxPoint->x = pV1[0];
+		}
+		if (pV1[2] > maxPoint->z) {
+			maxPoint->z = pV1[2];
+		}
+
+		if (pV1[0] < maxPoint->_x) {
+			maxPoint->_x = pV1[0];
+		}
+		if (pV1[2] < maxPoint->_z) {
+			maxPoint->_z = pV1[2];
+		}
+	}
+	someMesh->EndEnumVertices();
+}
+
+void loadModelsFromFile(vector<IModel*> &array, vector<Vector2> &arrayBounds, string filename, I3DEngine* myEngine) {
 	ifstream file(filename);
 
 	string newLine;
@@ -156,6 +187,12 @@ void loadModelsFromFile(vector<IModel*> &array, string filename, I3DEngine* myEn
 			float z = stof(newLine);
 
 			array.push_back(someMesh->CreateModel(x, y, z));
+
+			
+			Vector2 point;
+			findBounds(someMesh, &point);
+
+			arrayBounds.push_back(point);
 		}
 	}
 }
@@ -197,8 +234,8 @@ void changeCamera(I3DEngine* myEngine, ICamera* myCamera, Racer* thePlayer) {
 		else if (cameraState == ThirdPerson) {
 			//
 			thePlayer->model->GetMatrix(&thePlayer->matrix[0][0]);
-			myCamera->SetPosition(thePlayer->x() - thePlayer->matrix[2][0] * 20, thePlayer->y() - thePlayer->matrix[2][1] * 20 + 10, thePlayer->z() - thePlayer->matrix[2][2] * 20);
-			myCamera->LookAt(thePlayer->model);
+			myCamera->SetPosition(thePlayer->x() - thePlayer->matrix[2][0] * kCameraOffset, thePlayer->y() - thePlayer->matrix[2][1] * kCameraOffset + 15, thePlayer->z() - thePlayer->matrix[2][2] * kCameraOffset);
+			myCamera->LookAt(thePlayer->x(), thePlayer->y() + 10, thePlayer->z());
 
 		}
 
@@ -262,21 +299,28 @@ void main()
 
 	//Loading unmovable models from file
 	vector<IModel*> staticObjects;
-	loadModelsFromFile(staticObjects, "input.txt", myEngine);
+	vector<Vector2> staticObjectsBounds;
+	loadModelsFromFile(staticObjects, staticObjectsBounds, "input.txt", myEngine);
 
 	//Adding moving players
 	vector<IModel*> dynamicObjects;
 	Racer* player = &Racer(myEngine);
 	
+	
+	Vector2 racerBounds;
+	findBounds(player->model->GetMesh(), &racerBounds);
+	
+	
 
 	dynamicObjects.push_back(player->model);
 	myEngine->StopMouseCapture();
 
+
+
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
 	{	
-		
-		
+				
 		myFont->Draw(to_string(1/frameTime), 0, 0);
 
 		
