@@ -4,7 +4,7 @@ VisualStudioVersion = 16.0.31729.503
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Game_Concepts_Hover_Racing", "Game_Concepts_Hover_Racing.vcxproj", "{09E3BFC2-BE9D-42C6-AD13-08A2F474390E}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Assessment 2 Media", "Assessment 2 Media", "{18BB5356-1A7E-4FB9-9563-B20C32C5F707}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Resources", "Resources", "{18BB5356-1A7E-4FB9-9563-B20C32C5F707}"
 	ProjectSection(SolutionItems) = preProject
 		Assesment 2 Resources\Arch.tga = Assesment 2 Resources\Arch.tga
 		Assesment 2 Resources\back.jpg = Assesment 2 Resources\back.jpg
