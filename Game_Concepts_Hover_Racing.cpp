@@ -4,10 +4,12 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <ctime>
+#include <chrono>
 
 using namespace tle;
 using namespace std;
-
+using namespace std::chrono;
 
 //Constants
 float frameTime = 0.0f;
@@ -33,7 +35,7 @@ float pV3[3];
 //Game enums
 enum eGameState {Demo, Count_Down, Stage, RaceComplete, Developer, Paused};
 
-eGameState gameState = Demo;
+eGameState gameState = Stage;
 eGameState previousGameState;
 
 enum eCameraState {Free, ThirdPerson, FirstPerson, Surveillance};
@@ -48,10 +50,7 @@ float vectorLen(IModel* a, IModel* b) {
 }
 
 struct Vector2 {
-	float x = -10000;
-	float _x = 10000;
-	float z = -10000;
-	float _z = 10000;
+	float bounds[4] = { -10000, 10000,-10000, 10000 };
 };
 
 //Structures
@@ -61,6 +60,10 @@ typedef struct Racer {
 	float kRacerBackSpeed = 0.0f;
 	float matrix[4][4];
 	bool collided = false;
+	float vecToObjX;
+	float vecToObjZ;
+	float* boundsChecking;
+	Vector2 racerBounds = { 2.2308, -2.2308, 6.46015, -6.46015 };
 
 	Racer(I3DEngine* myEngine, float x = 0.0f, float y = 0.0f, float z = -20.0f) {
 		model = myEngine->LoadMesh("Racer.x")->CreateModel(x, y, z);
@@ -75,6 +78,8 @@ typedef struct Racer {
 	float z() {
 		return model->GetZ();
 	}
+	
+	
 	void moveRight(bool move) {
 		if (move) {
 			//Rotate right and up. Slowly return back
@@ -89,7 +94,7 @@ typedef struct Racer {
 		}
 	}
 	void moveForward(bool move) {
-
+		
 		if (move) {
 			model->MoveLocalZ(kRacerSpeed * frameTime);
 			if (kRacerSpeed < kMaxSpeed) {
@@ -119,16 +124,64 @@ typedef struct Racer {
 			}
 		}
 	}
-	void Collide(vector<IModel*>* array) {
+	void Collide(vector<IModel*>* staticObj, vector<Vector2>* staticObjBounds) {
 
 		if (!collided) {
-			for (auto obj : *array) {
+			int index = 0;
+			
+			for (auto obj : *staticObj) {
+				
 				if (vectorLen(model, obj) < 10) {
+					obj->GetMatrix(&matrix[0][0]);
+					boundsChecking = staticObjBounds->at(index).bounds;
+
+					for (int i = 0; i <= 1; i++) {
+						for (int j = 2; j <= 3; j++) {
+							vecToObjX = matrix[3][0] + matrix[0][0] * boundsChecking[i] + matrix[2][0] * boundsChecking[j] - x();
+							vecToObjZ = matrix[3][2] + matrix[0][2] * boundsChecking[i] + matrix[2][2] * boundsChecking[j] - z();
+
+							if (vecToObjX < racerBounds.bounds[0] && vecToObjX > racerBounds.bounds[1] && vecToObjZ < racerBounds.bounds[2] && vecToObjZ > racerBounds.bounds[3]) {
+
+								i = 4;
+								kRacerBackSpeed = kRacerSpeed;
+								kRacerSpeed = 0;
+								collided = true;
+								break;
+									
+								
+							}
+
+
+						}
+					}
+				
+				model->GetMatrix(&matrix[0][0]);
+				boundsChecking = racerBounds.bounds;
+				float* objBoundsOrigin = staticObjBounds->at(index).bounds;
+				for (int i = 0; i <= 1; i++) {
+					for (int j = 2; j <= 3; j++) {
+						vecToObjX = matrix[3][0] + matrix[0][0] * boundsChecking[i] + matrix[2][0] *boundsChecking[j] - obj->GetX();
+						vecToObjZ = matrix[3][2] + matrix[0][2] * boundsChecking[i] + matrix[2][2] *boundsChecking[j] - obj->GetZ();
+						
+						if (vecToObjX < objBoundsOrigin[0] && vecToObjX > objBoundsOrigin[1] && vecToObjZ < objBoundsOrigin[2] && vecToObjZ > objBoundsOrigin[3]) {
+							i = 4;
+							kRacerBackSpeed = kRacerSpeed;
+							kRacerSpeed = 0;
+							collided = true;
+							break;
+						}
+					}
+				}
+				}
+				index++;
+				/*if (vectorLen(model, obj) < 10) {
+					
+
 					kRacerBackSpeed = kRacerSpeed;
 					kRacerSpeed = 0;
 					collided = true;
 					break;
-				}
+				}*/
 			}
 		}
 		if (kRacerBackSpeed <= 0) {
@@ -136,6 +189,7 @@ typedef struct Racer {
 		}
 
 	}
+
 };
 
 //Functions
@@ -154,19 +208,17 @@ void findBounds(IMesh* someMesh, Vector2* maxPoint) {
 	someMesh->BeginEnumVertices();
 	while (someMesh->GetVertex(pV1))
 	{
-
-		if (pV1[0] > maxPoint->x) {
-			maxPoint->x = pV1[0];
+		if (pV1[0] > maxPoint->bounds[0]) {
+			maxPoint->bounds[0] = pV1[0];
 		}
-		if (pV1[2] > maxPoint->z) {
-			maxPoint->z = pV1[2];
+		if (pV1[2] > maxPoint->bounds[2]) {
+			maxPoint->bounds[2] = pV1[2];
 		}
-
-		if (pV1[0] < maxPoint->_x) {
-			maxPoint->_x = pV1[0];
+		if (pV1[0] < maxPoint->bounds[1]) {
+			maxPoint->bounds[1] = pV1[0];
 		}
-		if (pV1[2] < maxPoint->_z) {
-			maxPoint->_z = pV1[2];
+		if (pV1[2] < maxPoint->bounds[3]) {
+			maxPoint->bounds[3] = pV1[2];
 		}
 	}
 	someMesh->EndEnumVertices();
@@ -194,7 +246,7 @@ void loadModelsFromFile(vector<IModel*> &array, vector<Vector2> &arrayBounds, st
 
 
 			array.push_back(someMesh->CreateModel(x, y, z));
-
+			array.back()->RotateLocalY(rotate);
 			
 			Vector2 point;
 			findBounds(someMesh, &point);
@@ -211,18 +263,19 @@ void changeCamera(I3DEngine* myEngine, ICamera* myCamera, Racer* thePlayer) {
 
 		myCamera->RotateY(myEngine->GetMouseMovementX() * frameTime * kCameraSpeed);
 		myCamera->RotateLocalX(myEngine->GetMouseMovementY()* frameTime * kCameraSpeed);
+		float calcCameraSpeed = kCameraSpeed * frameTime * myCamera->GetY() / 20;
 
 		if (myEngine->KeyHeld(Key_Right)) {
-			myCamera->MoveLocalX(kCameraSpeed * frameTime);
+			myCamera->MoveLocalX(calcCameraSpeed);
 		}
 		else if (myEngine->KeyHeld(Key_Left)) {
-			myCamera->MoveLocalX(-kCameraSpeed * frameTime);
+			myCamera->MoveLocalX(-calcCameraSpeed);
 		}
 		else if (myEngine->KeyHeld(Key_Up)) {
-			myCamera->MoveLocalZ(kCameraSpeed * frameTime);
+			myCamera->MoveLocalZ(calcCameraSpeed);
 		}
 		else if (myEngine->KeyHeld(Key_Down)) {
-			myCamera->MoveLocalZ(-kCameraSpeed * frameTime);
+			myCamera->MoveLocalZ(-calcCameraSpeed);
 		}
 	}
 	
@@ -364,6 +417,8 @@ void moveNewModel(I3DEngine* myEngine, ICamera* myCamera) {
 
 void main()
 {
+
+	
 	// Create a 3D engine (using TLX engine here) and open a window for it
 	I3DEngine* myEngine = New3DEngine( kTLX );
 	myEngine->StartWindowed();
@@ -395,24 +450,29 @@ void main()
 	vector<IModel*> dynamicObjects;
 	Racer* player = &Racer(myEngine);
 	
-	
-	Vector2 racerBounds;
-	findBounds(player->model->GetMesh(), &racerBounds);
-	
-	
 
 	dynamicObjects.push_back(player->model);
 	myEngine->StopMouseCapture();
 
+	
 
+	high_resolution_clock::time_point start, finish;
+	duration<double> duration;
+	start = high_resolution_clock::now();
 
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
 	{	
 				
+		
+		frameCount++;
+		/*if (frameCount > 2000) {
+			break;
+		}*/
 		myFont->Draw(to_string(1/frameTime), 0, 0);
 
 
+		
 		frameTime = myEngine->Timer();
 		// Draw the scene
 		myEngine->DrawScene();
@@ -435,10 +495,12 @@ void main()
 		else if (gameState == Stage) {
 
 			player->moveRight(myEngine->KeyHeld(Key_D));
+			
 			player->moveLeft(myEngine->KeyHeld(Key_A));
+			
 			player->moveForward(myEngine->KeyHeld(Key_W));
 			player->moveBackward(myEngine->KeyHeld(Key_S));
-			player->Collide(&staticObjects);
+			player->Collide(&staticObjects, &staticObjectsBounds);
 		}
 		//RACE_COMPLETE
 		else if (gameState == RaceComplete) {
@@ -518,7 +580,16 @@ void main()
 
 
 	}
+	finish = high_resolution_clock::now();
+	duration = finish - start;
+
+
+	cout << duration.count() << " seconds\n";
+	cout << frameCount << " frames\n";
+	cout << (frameCount/duration.count()) << " FPS\n";
 
 	// Delete the 3D engine now we are finished with it
 	myEngine->Delete();
+
+
 }
