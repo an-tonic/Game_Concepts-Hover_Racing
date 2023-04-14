@@ -1,4 +1,4 @@
-IsleTee.x
+Checkpoint.x
 0
 0
 0

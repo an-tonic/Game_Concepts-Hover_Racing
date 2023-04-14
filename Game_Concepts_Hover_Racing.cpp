@@ -14,7 +14,7 @@ using namespace std::chrono;
 //Constants
 float frameTime = 0.0f;
 float kMaxSpeed = 50.f;
-float kAcceleration = 90.0f;
+float kAcceleration = 90;
 float kAirDrag = 1.0f;
 float kRacerRotateSpeed = 90.0f;
 float kCameraSpeed = 190.0f;
@@ -26,20 +26,22 @@ string inputfile = "input.txt";
 long long frameCount = 0;
 int kCameraOffset = 22;
 
+int winWidth;
+int winHeight;
+int borderForText = 10;
 //Variables
 float timeCounter = 4;
 string bigText = to_string(timeCounter);
 float pV1[3];
-float pV2[3];
-float pV3[3];
-//Game enums
-enum eGameState {Demo, Count_Down, Stage, RaceComplete, Developer, Paused};
 
-eGameState gameState = Stage;
+//Game enums
+enum eGameState {Demo, CountDown, Stage, RaceComplete, Developer, Paused};
+
+eGameState gameState = Demo;
 eGameState previousGameState;
 
 enum eCameraState {Free, ThirdPerson, FirstPerson, Surveillance};
-eCameraState cameraState = Free;
+eCameraState cameraState = ThirdPerson;
 
 float vectorLen(IModel* a, IModel* b) {
 	float vectorX = b->GetX() - a->GetX();
@@ -58,7 +60,8 @@ typedef struct Racer {
 	IModel* model;
 	float kRacerSpeed = 0.0f;
 	float kRacerBackSpeed = 0.0f;
-	float matrix[4][4];
+	float racerMatrix[4][4];
+	float objMatrix[4][4];
 	bool collided = false;
 	float vecToObjX;
 	float vecToObjZ;
@@ -100,11 +103,17 @@ typedef struct Racer {
 			if (kRacerSpeed < kMaxSpeed) {
 				kRacerSpeed += kAcceleration * frameTime;
 			}
+			else {
+				kRacerSpeed = 50;
+			}
 		}
 		else {
 			if (kRacerSpeed > 0) {
 				model->MoveLocalZ(kRacerSpeed * frameTime);
 				kRacerSpeed -= kAcceleration * frameTime * kAirDrag;
+			}
+			else {
+				kRacerSpeed = 0;
 			}
 		}
 
@@ -131,14 +140,16 @@ typedef struct Racer {
 			
 			for (auto obj : *staticObj) {
 				
-				if (vectorLen(model, obj) < 10) {
-					obj->GetMatrix(&matrix[0][0]);
-					boundsChecking = staticObjBounds->at(index).bounds;
+				if (vectorLen(model, obj) < 20) {
+					obj->GetMatrix(&racerMatrix[0][0]);
+					model->GetMatrix(&objMatrix[0][0]);
 
+					boundsChecking = staticObjBounds->at(index).bounds;
+					
 					for (int i = 0; i <= 1; i++) {
 						for (int j = 2; j <= 3; j++) {
-							vecToObjX = matrix[3][0] + matrix[0][0] * boundsChecking[i] + matrix[2][0] * boundsChecking[j] - x();
-							vecToObjZ = matrix[3][2] + matrix[0][2] * boundsChecking[i] + matrix[2][2] * boundsChecking[j] - z();
+							vecToObjX = racerMatrix[3][0] + racerMatrix[0][0] * boundsChecking[i] + racerMatrix[2][0] * boundsChecking[j] - x();
+							vecToObjZ = racerMatrix[3][2] + racerMatrix[0][2] * boundsChecking[i] + racerMatrix[2][2] * boundsChecking[j] - z();
 
 							if (vecToObjX < racerBounds.bounds[0] && vecToObjX > racerBounds.bounds[1] && vecToObjZ < racerBounds.bounds[2] && vecToObjZ > racerBounds.bounds[3]) {
 
@@ -147,41 +158,24 @@ typedef struct Racer {
 								kRacerSpeed = 0;
 								collided = true;
 								break;
-									
-								
 							}
+							
+							
+							vecToObjX = objMatrix[3][0] + objMatrix[0][0] * racerBounds.bounds[i] + objMatrix[2][0] * racerBounds.bounds[j] - obj->GetX();
+							vecToObjZ = objMatrix[3][2] + objMatrix[0][2] * racerBounds.bounds[i] + objMatrix[2][2] * racerBounds.bounds[j] - obj->GetZ();
 
-
+							if (vecToObjX < racerBounds.bounds[0] && vecToObjX > racerBounds.bounds[1] && vecToObjZ < racerBounds.bounds[2] && vecToObjZ > racerBounds.bounds[3]) {
+								i = 4;
+								kRacerBackSpeed = kRacerSpeed;
+								kRacerSpeed = 0;
+								collided = true;
+								break;
+							}
 						}
 					}
-				
-				model->GetMatrix(&matrix[0][0]);
-				boundsChecking = racerBounds.bounds;
-				float* objBoundsOrigin = staticObjBounds->at(index).bounds;
-				for (int i = 0; i <= 1; i++) {
-					for (int j = 2; j <= 3; j++) {
-						vecToObjX = matrix[3][0] + matrix[0][0] * boundsChecking[i] + matrix[2][0] *boundsChecking[j] - obj->GetX();
-						vecToObjZ = matrix[3][2] + matrix[0][2] * boundsChecking[i] + matrix[2][2] *boundsChecking[j] - obj->GetZ();
-						
-						if (vecToObjX < objBoundsOrigin[0] && vecToObjX > objBoundsOrigin[1] && vecToObjZ < objBoundsOrigin[2] && vecToObjZ > objBoundsOrigin[3]) {
-							i = 4;
-							kRacerBackSpeed = kRacerSpeed;
-							kRacerSpeed = 0;
-							collided = true;
-							break;
-						}
-					}
-				}
 				}
 				index++;
-				/*if (vectorLen(model, obj) < 10) {
-					
-
-					kRacerBackSpeed = kRacerSpeed;
-					kRacerSpeed = 0;
-					collided = true;
-					break;
-				}*/
+				
 			}
 		}
 		if (kRacerBackSpeed <= 0) {
@@ -204,6 +198,20 @@ bool isNumber(string* line) {
 	return false;
 }
 
+
+string stringifyEnum(enum eGameState someEnum)
+{
+	switch (someEnum) {
+		case Demo: return "Demo";
+		case CountDown: return "CountDown";
+		case Stage: return "Stage";
+		case RaceComplete: return "RaceComplete";
+		case Developer: return "Developer";
+		case Paused: return "Paused";
+
+	}
+}
+
 void findBounds(IMesh* someMesh, Vector2* maxPoint) {
 	someMesh->BeginEnumVertices();
 	while (someMesh->GetVertex(pV1))
@@ -224,35 +232,38 @@ void findBounds(IMesh* someMesh, Vector2* maxPoint) {
 	someMesh->EndEnumVertices();
 }
 
-void loadModelsFromFile(vector<IModel*> &array, vector<Vector2> &arrayBounds, string filename, I3DEngine* myEngine) {
+void loadModelsFromFile(vector<IModel*> &array, vector<Vector2> &arrayBounds, vector<IModel*>& arrayUncolliadable, string filename, I3DEngine* myEngine) {
 	ifstream file(filename);
 
-	string newLine;
+	string meshName;
+	string meshCoords;
 	IMesh* someMesh{};
 	while (file.good())
 	{
-		getline(file, newLine);
-		if (!isNumber(&newLine)) {
-			someMesh = myEngine->LoadMesh(newLine);
+		getline(file, meshName);
+		someMesh = myEngine->LoadMesh(meshName);
+
+		getline(file, meshCoords);
+		float x = stof(meshCoords);
+		getline(file, meshCoords);
+		float y = stof(meshCoords);
+		getline(file, meshCoords);
+		float z = stof(meshCoords);
+		getline(file, meshCoords);
+		float rotate = stof(meshCoords);
+
+		if (meshName == "Checkpoint.x") {
+			arrayUncolliadable.push_back(someMesh->CreateModel(x, y, z));
+			arrayUncolliadable.back()->RotateLocalY(rotate);
 		}
 		else {
-			float x = stof(newLine);
-			getline(file, newLine);
-			float y = stof(newLine);
-			getline(file, newLine);
-			float z = stof(newLine);
-			getline(file, newLine);
-			float rotate = stof(newLine);
-
-
 			array.push_back(someMesh->CreateModel(x, y, z));
 			array.back()->RotateLocalY(rotate);
 			
 			Vector2 point;
 			findBounds(someMesh, &point);
-
 			arrayBounds.push_back(point);
-		}
+		}	
 	}
 }
 
@@ -285,16 +296,16 @@ void changeCamera(I3DEngine* myEngine, ICamera* myCamera, Racer* thePlayer) {
 		if (cameraState == FirstPerson) {
 			myCamera->SetPosition(thePlayer->x(), thePlayer->y() + 5, thePlayer->z());
 
-			thePlayer->model->GetMatrix(&thePlayer->matrix[0][0]);
+			thePlayer->model->GetMatrix(&thePlayer->racerMatrix[0][0]);
 
-			myCamera->LookAt(thePlayer->x() + thePlayer->matrix[2][0], thePlayer->y() + 5, thePlayer->z() + thePlayer->matrix[2][2]);
+			myCamera->LookAt(thePlayer->x() + thePlayer->racerMatrix[2][0], thePlayer->y() + 5, thePlayer->z() + thePlayer->racerMatrix[2][2]);
 
 		}
 		//THIRD
 		else if (cameraState == ThirdPerson) {
 			//
-			thePlayer->model->GetMatrix(&thePlayer->matrix[0][0]);
-			myCamera->SetPosition(thePlayer->x() - thePlayer->matrix[2][0] * kCameraOffset, thePlayer->y() - thePlayer->matrix[2][1] * kCameraOffset + 15, thePlayer->z() - thePlayer->matrix[2][2] * kCameraOffset);
+			thePlayer->model->GetMatrix(&thePlayer->racerMatrix[0][0]);
+			myCamera->SetPosition(thePlayer->x() - thePlayer->racerMatrix[2][0] * kCameraOffset, thePlayer->y() - thePlayer->racerMatrix[2][1] * kCameraOffset + 15, thePlayer->z() - thePlayer->racerMatrix[2][2] * kCameraOffset);
 			myCamera->LookAt(thePlayer->x(), thePlayer->y() + 10, thePlayer->z());
 
 		}
@@ -309,16 +320,15 @@ void changeCamera(I3DEngine* myEngine, ICamera* myCamera, Racer* thePlayer) {
 }
 
 void displayCountDown(IFont* text, I3DEngine* myEngine) {
-	timeCounter = timeCounter - frameTime;
-	bigText = to_string(timeCounter);
-	//Getting just the first number, i.e. integer
-	bigText = bigText[0];
+
+	timeCounter -= frameTime;
+
 	if (timeCounter > 1) {
-		text->Draw(bigText, myEngine->GetWidth() / 2 - text->MeasureTextWidth(bigText) / 2, myEngine->GetHeight() / 2);
+		text->Draw(to_string(timeCounter).substr(0, 1), winWidth / 2, winHeight / 2, kRed, kCentre);
 	}
 	else {
 		bigText = "Go, go, go!";
-		text->Draw(bigText, myEngine->GetWidth() / 2 - text->MeasureTextWidth(bigText) / 2, myEngine->GetHeight() / 2);
+		text->Draw(bigText, winWidth / 2 - text->MeasureTextWidth(bigText) / 2, winHeight / 2);
 		if (timeCounter < 0) {
 			gameState = Stage;
 		}
@@ -328,10 +338,10 @@ void displayCountDown(IFont* text, I3DEngine* myEngine) {
 
 void startGame(IFont* myFont, I3DEngine* myEngine) {
 	string text = "Press Space to Start";
-	myFont->Draw(text, myEngine->GetWidth() / 2 - myFont->MeasureTextWidth(text) / 2, myEngine->GetHeight() / 2);
+	myFont->Draw(text, winWidth / 2 - myFont->MeasureTextWidth(text) / 2, winHeight / 2);
 
 	if (myEngine->KeyHit(Key_Space)) {
-		gameState = Count_Down;
+		gameState = CountDown;
 	}
 }
 
@@ -422,6 +432,8 @@ void main()
 	// Create a 3D engine (using TLX engine here) and open a window for it
 	I3DEngine* myEngine = New3DEngine( kTLX );
 	myEngine->StartWindowed();
+	winWidth = myEngine->GetWidth();
+	winHeight = myEngine->GetHeight();
 
 	// Add default folder for meshes and other media
 	//myEngine->AddMediaFolder( "C:\\Users\\an-tonic\\source\\repos\\Game_Concepts-Hover_Racing\\Assesment 2 Resources" );
@@ -431,20 +443,24 @@ void main()
 	ICamera* myCamera = myEngine->CreateCamera(kManual);
 
 	IMesh* skyMesh = myEngine->LoadMesh("Skybox.x");
-	IModel* skyModel = skyMesh->CreateModel(0, -960, 0);
-
-	
+	IModel* skyModel = skyMesh->CreateModel(0, -1000, 0);
 
 	IMesh* groundMesh = myEngine->LoadMesh("ground.x");
 	IModel* groundModel = groundMesh->CreateModel(0, 0, 0);
 	
-	IFont* myFont = myEngine->LoadFont("Times New Roman", 36);
-	IFont* myBigRedFont = myEngine->LoadFont("Times New Roman", 56);
+	IFont* myFont = myEngine->LoadFont("Amasis MT Pro Black", 36);
+	IFont* myBigFont = myEngine->LoadFont("Amasis MT Pro Black", 76);
 
-	//Loading unmovable models from file
+	ISprite* backdrop_console = myEngine->CreateSprite("ui_backdrop_console.tga", 0, 0);
+	
+
+
+	//Loading unmovable,collidable and uncollidable models from file
 	vector<IModel*> staticObjects;
 	vector<Vector2> staticObjectsBounds;
-	loadModelsFromFile(staticObjects, staticObjectsBounds, "input.txt", myEngine);
+
+	vector<IModel*> staticNonCollidableObjects;
+	loadModelsFromFile(staticObjects, staticObjectsBounds, staticNonCollidableObjects, "input.txt", myEngine);
 
 	//Adding moving players
 	vector<IModel*> dynamicObjects;
@@ -454,7 +470,7 @@ void main()
 	dynamicObjects.push_back(player->model);
 	myEngine->StopMouseCapture();
 
-	
+	ISprite* backdrop = myEngine->CreateSprite("ui_backdrop.tga", 0, 0);
 
 	high_resolution_clock::time_point start, finish;
 	duration<double> duration;
@@ -463,41 +479,45 @@ void main()
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
 	{	
-				
 		
+
 		frameCount++;
-		/*if (frameCount > 2000) {
-			break;
-		}*/
-		myFont->Draw(to_string(1/frameTime), 0, 0);
-
-
 		
 		frameTime = myEngine->Timer();
+		
+		
+		
 		// Draw the scene
 		myEngine->DrawScene();
 
 		/**** Update your scene each frame here ****/
 
-
-		
+		myFont->Draw(to_string(1 / frameTime), borderForText, borderForText);
+		string gameStateString = stringifyEnum(gameState);
+		myFont->Draw(gameStateString, winWidth - myFont->MeasureTextWidth(gameStateString) - borderForText, borderForText, kCyan);
 
 		//Major game states
 		//DEMO
 		if (gameState == Demo) {
-			displayCountDown(myFont, myEngine);
+			
+			myFont->Draw("$ > Press SPACE to START_", winWidth * 0.02, winHeight * 0.925, kCyan);
+			if (myEngine->KeyHit(Key_Space)) {
+				gameState = CountDown;
+				backdrop_console->~ISprite();
+				ISprite* backdrop = myEngine->CreateSprite("ui_backdrop.tga", 0, 0);
+			}
+
 		}
 		//COUNT_DOWN
-		else if (gameState == Count_Down) {
-			displayCountDown(myBigRedFont, myEngine);
+		else if (gameState == CountDown) {
+			displayCountDown(myBigFont, myEngine);
 		}
 		//STAGE
 		else if (gameState == Stage) {
-
+			
+			myBigFont->Draw(to_string(player->kRacerSpeed).substr(0, 4), winWidth * 0.845, winHeight * 0.845, kCyan);
 			player->moveRight(myEngine->KeyHeld(Key_D));
-			
 			player->moveLeft(myEngine->KeyHeld(Key_A));
-			
 			player->moveForward(myEngine->KeyHeld(Key_W));
 			player->moveBackward(myEngine->KeyHeld(Key_S));
 			player->Collide(&staticObjects, &staticObjectsBounds);
@@ -507,6 +527,7 @@ void main()
 
 
 		}
+		//DEVELOPER MODE
 		else if (gameState == Developer) {
 			
 			if (myEngine->AnyKeyHit()) {			
@@ -514,15 +535,17 @@ void main()
 			}
 			if (newModel != nullptr) {
 				moveNewModel(myEngine, myCamera);
-			}
-
-			
+			}		
+		} 
+		//PAUSED MODE
+		else if (gameState == Paused) {
+			//Do nothing
 		}
-		//Change camera
-		changeCamera(myEngine, myCamera, player);
-
-		if (gameState != Developer) {
-			
+		
+		//Allowing camera to change when in any other state rather than Demo
+		if (gameState != Demo) {
+			//Change camera
+			changeCamera(myEngine, myCamera, player);
 			
 			//GAME UTILS
 
@@ -569,9 +592,7 @@ void main()
 					gameState = previousGameState;
 				}
 			}
-			if (gameState == Paused) {
-				myFont->Draw("PAUSED", 0, 0);
-			}
+			
 		}
 		//Game Exit
 		if (myEngine->KeyHit(Key_Escape)) {
