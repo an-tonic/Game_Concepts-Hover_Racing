@@ -23,16 +23,18 @@ IModel* newModel = nullptr;
 IMesh* newMesh = nullptr;
 string newModelName = "";
 string inputfile = "input.txt";
-long long frameCount = 0;
 int kCameraOffset = 22;
-
 int winWidth;
 int winHeight;
 int borderForText = 10;
+
 //Variables
+long long frameCount = 0;
 float timeCounter = 4;
 string bigText = to_string(timeCounter);
 float pV1[3];
+int currentStage = 0;
+bool warningMessage = false;
 
 //Game enums
 enum eGameState {Demo, CountDown, Stage, RaceComplete, Developer, Paused};
@@ -183,7 +185,22 @@ typedef struct Racer {
 		}
 
 	}
-
+	void checkStage(vector<IModel*>* checkpointObj) {
+		
+		for (int i = currentStage; i < checkpointObj->size(); i++) {
+			if (vectorLen(model, checkpointObj->at(i)) < 10) {
+				if (currentStage == i) {
+					currentStage++;
+					warningMessage = false;
+					break;
+				}
+				else {
+					warningMessage = true;
+					break;
+				}
+			}
+		}
+	}
 };
 
 //Functions
@@ -203,9 +220,9 @@ string stringifyEnum(enum eGameState someEnum)
 {
 	switch (someEnum) {
 		case Demo: return "Demo";
-		case CountDown: return "CountDown";
-		case Stage: return "Stage";
-		case RaceComplete: return "RaceComplete";
+		case CountDown: return "Count Down";
+		case Stage: return "Stage " + to_string(currentStage + 1);
+		case RaceComplete: return "Race Complete";
 		case Developer: return "Developer";
 		case Paused: return "Paused";
 
@@ -494,6 +511,7 @@ void main()
 
 		myFont->Draw(to_string(1 / frameTime), borderForText, borderForText);
 		string gameStateString = stringifyEnum(gameState);
+
 		myFont->Draw(gameStateString, winWidth - myFont->MeasureTextWidth(gameStateString) - borderForText, borderForText, kCyan);
 
 		//Major game states
@@ -521,6 +539,10 @@ void main()
 			player->moveForward(myEngine->KeyHeld(Key_W));
 			player->moveBackward(myEngine->KeyHeld(Key_S));
 			player->Collide(&staticObjects, &staticObjectsBounds);
+			player->checkStage(&staticNonCollidableObjects);
+			if (warningMessage) {
+				myFont->Draw("Stage " + to_string(currentStage) + " is incomplete!", winWidth * 0.5, winHeight * 0.5, kRed, kCentre);
+			}
 		}
 		//RACE_COMPLETE
 		else if (gameState == RaceComplete) {
@@ -545,8 +567,8 @@ void main()
 		//Allowing camera to change when in any other state rather than Demo
 		if (gameState != Demo) {
 			//Change camera
-			changeCamera(myEngine, myCamera, player);
 			
+			changeCamera(myEngine, myCamera, player);
 			//GAME UTILS
 
 			//FIRST
