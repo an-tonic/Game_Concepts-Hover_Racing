@@ -13,7 +13,7 @@ using namespace std::chrono;
 
 //Constants
 float frameTime = 0.0f;
-float kMaxSpeed = 50.f;
+float kMaxSpeed = 100.f;
 float kAcceleration = 90;
 float kAirDrag = 1.0f;
 float kRacerRotateSpeed = 90.0f;
@@ -29,7 +29,7 @@ int winHeight;
 int borderForText = 10;
 
 //Variables
-long long frameCount = 0;
+unsigned long long frameCount = 0;
 float timeCounter = 4;
 string bigText = to_string(timeCounter);
 float pV1[3];
@@ -39,7 +39,7 @@ bool warningMessage = false;
 //Game enums
 enum eGameState {Demo, CountDown, Stage, RaceComplete, Developer, Paused};
 
-eGameState gameState = Demo;
+eGameState gameState = Stage;
 eGameState previousGameState;
 
 enum eCameraState {Free, ThirdPerson, FirstPerson, Surveillance};
@@ -101,24 +101,23 @@ typedef struct Racer {
 	void moveForward(bool move) {
 		
 		if (move) {
-			model->MoveLocalZ(kRacerSpeed * frameTime);
+			
 			if (kRacerSpeed < kMaxSpeed) {
 				kRacerSpeed += kAcceleration * frameTime;
 			}
 			else {
-				kRacerSpeed = 50;
+				kRacerSpeed = kMaxSpeed;
 			}
 		}
 		else {
-			if (kRacerSpeed > 0) {
-				model->MoveLocalZ(kRacerSpeed * frameTime);
+			if (kRacerSpeed > 0) {			
 				kRacerSpeed -= kAcceleration * frameTime * kAirDrag;
 			}
 			else {
 				kRacerSpeed = 0;
 			}
 		}
-
+		model->MoveLocalZ(kRacerSpeed * frameTime);
 	}
 	void moveBackward(bool move) {
 		if (move) {
@@ -185,8 +184,10 @@ typedef struct Racer {
 		}
 
 	}
-	void checkStage(vector<IModel*>* checkpointObj) {
-		
+	void checkStage(vector<IModel*>* checkpointObj, IFont* myFont) {
+		if (warningMessage) {
+			myFont->Draw("Stage " + to_string(currentStage + 1) + " is incomplete!", winWidth * 0.5, winHeight * 0.5, kRed, kCentre);
+		}
 		for (int i = currentStage; i < checkpointObj->size(); i++) {
 			if (vectorLen(model, checkpointObj->at(i)) < 10) {
 				if (currentStage == i) {
@@ -215,13 +216,12 @@ bool isNumber(string* line) {
 	return false;
 }
 
-
 string stringifyEnum(enum eGameState someEnum)
 {
 	switch (someEnum) {
 		case Demo: return "Demo";
 		case CountDown: return "Count Down";
-		case Stage: return "Stage " + to_string(currentStage + 1);
+		case Stage: return "Stage " + to_string(currentStage) + " Complete";
 		case RaceComplete: return "Race Complete";
 		case Developer: return "Developer";
 		case Paused: return "Paused";
@@ -291,7 +291,7 @@ void changeCamera(I3DEngine* myEngine, ICamera* myCamera, Racer* thePlayer) {
 
 		myCamera->RotateY(myEngine->GetMouseMovementX() * frameTime * kCameraSpeed);
 		myCamera->RotateLocalX(myEngine->GetMouseMovementY()* frameTime * kCameraSpeed);
-		float calcCameraSpeed = kCameraSpeed * frameTime * myCamera->GetY() / 20;
+		float calcCameraSpeed = kCameraSpeed * frameTime * myCamera->GetY() * 0.01;
 
 		if (myEngine->KeyHeld(Key_Right)) {
 			myCamera->MoveLocalX(calcCameraSpeed);
@@ -305,35 +305,36 @@ void changeCamera(I3DEngine* myEngine, ICamera* myCamera, Racer* thePlayer) {
 		else if (myEngine->KeyHeld(Key_Down)) {
 			myCamera->MoveLocalZ(-calcCameraSpeed);
 		}
+		else if (myEngine->KeyHit(Key_C)) {
+			myCamera->ResetOrientation();
+			myCamera->SetPosition(200, 200, 200);
+			myCamera->RotateY(-90);
+			myCamera->RotateLocalX(45);
+		}
+
+	} 
+	else if (cameraState == FirstPerson) {
+		myCamera->SetPosition(thePlayer->x(), thePlayer->y() + 5, thePlayer->z());
+		thePlayer->model->GetMatrix(&thePlayer->racerMatrix[0][0]);
+		myCamera->LookAt(thePlayer->x() + thePlayer->racerMatrix[2][0], thePlayer->y() + 5, thePlayer->z() + thePlayer->racerMatrix[2][2]);
+
+	}
+	//THIRD
+	else if (cameraState == ThirdPerson) {
+			
+		thePlayer->model->GetMatrix(&thePlayer->racerMatrix[0][0]);
+		myCamera->SetPosition(thePlayer->x() - thePlayer->racerMatrix[2][0] * kCameraOffset, thePlayer->y() - thePlayer->racerMatrix[2][1] * kCameraOffset + 15, thePlayer->z() - thePlayer->racerMatrix[2][2] * kCameraOffset);
+		myCamera->LookAt(thePlayer->x(), thePlayer->y() + 10, thePlayer->z());
+
+	}
+
+	//SURVEILLANCE
+	else if (cameraState == Surveillance) {
+		//TODO - Position it somewhere
+		myCamera->SetPosition(10, 10, 10);
+		myCamera->LookAt(thePlayer->model);
 	}
 	
-	if (myEngine->AnyKeyHit() || myEngine->AnyKeyHeld()) {
-		
-		//FIRST
-		if (cameraState == FirstPerson) {
-			myCamera->SetPosition(thePlayer->x(), thePlayer->y() + 5, thePlayer->z());
-
-			thePlayer->model->GetMatrix(&thePlayer->racerMatrix[0][0]);
-
-			myCamera->LookAt(thePlayer->x() + thePlayer->racerMatrix[2][0], thePlayer->y() + 5, thePlayer->z() + thePlayer->racerMatrix[2][2]);
-
-		}
-		//THIRD
-		else if (cameraState == ThirdPerson) {
-			//
-			thePlayer->model->GetMatrix(&thePlayer->racerMatrix[0][0]);
-			myCamera->SetPosition(thePlayer->x() - thePlayer->racerMatrix[2][0] * kCameraOffset, thePlayer->y() - thePlayer->racerMatrix[2][1] * kCameraOffset + 15, thePlayer->z() - thePlayer->racerMatrix[2][2] * kCameraOffset);
-			myCamera->LookAt(thePlayer->x(), thePlayer->y() + 10, thePlayer->z());
-
-		}
-
-		//SURVEILLANCE
-		else if (cameraState == Surveillance) {
-			//TODO - Position it somewhere
-			myCamera->SetPosition(10, 10, 10);
-			myCamera->LookAt(thePlayer->model);
-		}
-	}
 }
 
 void displayCountDown(IFont* text, I3DEngine* myEngine) {
@@ -502,6 +503,7 @@ void main()
 		
 		frameTime = myEngine->Timer();
 		
+
 		
 		
 		// Draw the scene
@@ -532,17 +534,17 @@ void main()
 		}
 		//STAGE
 		else if (gameState == Stage) {
-			
-			myBigFont->Draw(to_string(player->kRacerSpeed).substr(0, 4), winWidth * 0.845, winHeight * 0.845, kCyan);
+			player->model->MoveLocalY(sin((frameCount % 500) * 0.01257)*0.003);
+			myBigFont->Draw(to_string((int)player->kRacerSpeed), winWidth * 0.9, winHeight * 0.845, kCyan, kCentre);
 			player->moveRight(myEngine->KeyHeld(Key_D));
 			player->moveLeft(myEngine->KeyHeld(Key_A));
 			player->moveForward(myEngine->KeyHeld(Key_W));
 			player->moveBackward(myEngine->KeyHeld(Key_S));
-			player->Collide(&staticObjects, &staticObjectsBounds);
-			player->checkStage(&staticNonCollidableObjects);
-			if (warningMessage) {
-				myFont->Draw("Stage " + to_string(currentStage) + " is incomplete!", winWidth * 0.5, winHeight * 0.5, kRed, kCentre);
-			}
+			player->Collide(&staticObjects, &staticObjectsBounds);	
+			player->checkStage(&staticNonCollidableObjects, myFont);
+			
+			
+			
 		}
 		//RACE_COMPLETE
 		else if (gameState == RaceComplete) {
@@ -576,20 +578,23 @@ void main()
 				cameraState = FirstPerson;
 				myCamera->AttachToParent(player->model);
 
-				//FREE
+				
 			}
+			//FREE
 			else if (myEngine->KeyHit(Key_2)) {
 				cameraState = Free;
 				myCamera->DetachFromParent();
-
-				//THIRD
+				myCamera->SetPosition(200, 200, 200);
+				myCamera->RotateY(-90);
+				myCamera->RotateLocalX(45);
 			}
+			//THIRD
 			else if (myEngine->KeyHit(Key_3)) {
 				myCamera->AttachToParent(player->model);
 				cameraState = ThirdPerson;
-
-				//Survaliance
+				
 			}
+			//Survaliance
 			else if (myEngine->KeyHit(Key_4)) {
 				cameraState = Surveillance;
 				myCamera->DetachFromParent();
@@ -621,11 +626,12 @@ void main()
 			myEngine->Stop();
 		}
 
-
+		
+		
 	}
+	
 	finish = high_resolution_clock::now();
 	duration = finish - start;
-
 
 	cout << duration.count() << " seconds\n";
 	cout << frameCount << " frames\n";
