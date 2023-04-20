@@ -253,7 +253,7 @@ Material material01 {
 	0.000000;0.000000;0.000000;;
 	0.000000;0.000000;0.000000;;
 	TextureFilename {
-		"sp02_01.jpg";
+		"sp02_01Opponent.jpg";
 	}
 }
 

@@ -75,6 +75,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <LanguageStandard>Default</LanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>C:\ProgramData\TL-Engine\lib;$(DXSDK_DIR)lib\x86;$(DXSDK_DIR)\include;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>

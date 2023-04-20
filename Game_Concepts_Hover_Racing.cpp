@@ -6,16 +6,22 @@
 #include <fstream>
 #include <ctime>
 #include <chrono>
+#include <filesystem>
 
 using namespace tle;
-using namespace std;
+//using namespace std;
 using namespace std::chrono;
+
 
 //Constants
 float frameTime = 0.0f;
-float kMaxSpeed = 100.f;
-float kAcceleration = 90;
+float kMaxSpeed = 100.0f;
+float kAcceleration = 50.0f;
 float kAirDrag = 1.0f;
+float kElasticity = 0.5f;
+float kBoostLimit = 4.0f;
+float kBoostReset = 0.0f;
+
 float kRacerRotateSpeed = 90.0f;
 float kCameraSpeed = 190.0f;
 float kNewModelSpeed = 1.0f;
@@ -23,10 +29,14 @@ IModel* newModel = nullptr;
 IMesh* newMesh = nullptr;
 string newModelName = "";
 string inputfile = "input.txt";
+string boostTextActive = "Boost Active";
+string boostTextOverheating = "Boost Overheating!";
 int kCameraOffset = 22;
 int winWidth;
 int winHeight;
 int borderForText = 10;
+
+
 
 //Variables
 unsigned long long frameCount = 0;
@@ -65,13 +75,16 @@ typedef struct Racer {
 	float racerMatrix[4][4];
 	float objMatrix[4][4];
 	bool collided = false;
+	bool speedBoost = false;
+	float speedBoostTime = 2.0f;
 	float vecToObjX;
 	float vecToObjZ;
 	float* boundsChecking;
+	int currentWaypoint = 0;
 	Vector2 racerBounds = { 2.2308, -2.2308, 6.46015, -6.46015 };
 
-	Racer(I3DEngine* myEngine, float x = 0.0f, float y = 0.0f, float z = -20.0f) {
-		model = myEngine->LoadMesh("Racer.x")->CreateModel(x, y, z);
+	Racer(I3DEngine* myEngine, string meshName = "Racer.x",  float x = 0.0f, float y = 0.0f, float z = -20.0f) {
+		model = myEngine->LoadMesh(meshName)->CreateModel(x, y, z);
 
 	}
 	float x() {
@@ -84,7 +97,32 @@ typedef struct Racer {
 		return model->GetZ();
 	}
 	
-	
+	void boost(bool move, IFont* myFont) {
+		if (move && kBoostReset == 0) {
+			kAcceleration = 100.0;
+			kBoostLimit -= frameTime;
+			if (kBoostLimit > 2) {
+				myFont->Draw(boostTextActive, winWidth - myFont->MeasureTextWidth(boostTextActive), 30 + borderForText, kGreen, kCentre);
+
+			} else if (kBoostLimit < 2) {
+				myFont->Draw(boostTextOverheating, winWidth - myFont->MeasureTextWidth(boostTextOverheating), 30 + borderForText, kRed);
+			}
+			if (kBoostLimit < 0) {
+				kBoostReset = 6.0;
+			}
+
+		}
+		else {
+			kAcceleration = 50.0;
+			kBoostLimit = 4.0;
+		}
+		if (kBoostReset > 0) {
+			kBoostReset -= frameTime;
+		}
+		else {
+			kBoostReset = 0.0;
+		}
+	}
 	void moveRight(bool move) {
 		if (move) {
 			//Rotate right and up. Slowly return back
@@ -134,7 +172,7 @@ typedef struct Racer {
 			}
 		}
 	}
-	void Collide(vector<IModel*>* staticObj, vector<Vector2>* staticObjBounds) {
+	void Collide(vector<IModel*>* staticObj, vector<Vector2>* staticObjBounds, vector<IModel*>* speedPackagesObj ) {
 
 		if (!collided) {
 			int index = 0;
@@ -155,7 +193,7 @@ typedef struct Racer {
 							if (vecToObjX < racerBounds.bounds[0] && vecToObjX > racerBounds.bounds[1] && vecToObjZ < racerBounds.bounds[2] && vecToObjZ > racerBounds.bounds[3]) {
 
 								i = 4;
-								kRacerBackSpeed = kRacerSpeed;
+								kRacerBackSpeed = kRacerSpeed * kElasticity;
 								kRacerSpeed = 0;
 								collided = true;
 								break;
@@ -167,7 +205,7 @@ typedef struct Racer {
 
 							if (vecToObjX < racerBounds.bounds[0] && vecToObjX > racerBounds.bounds[1] && vecToObjZ < racerBounds.bounds[2] && vecToObjZ > racerBounds.bounds[3]) {
 								i = 4;
-								kRacerBackSpeed = kRacerSpeed;
+								kRacerBackSpeed = kRacerSpeed * kElasticity;
 								kRacerSpeed = 0;
 								collided = true;
 								break;
@@ -178,13 +216,38 @@ typedef struct Racer {
 				index++;
 				
 			}
+
+
+			for (auto speedObj : *speedPackagesObj) {
+				if (speedObj->GetY() > -10 && vectorLen(model, speedObj) < 10) {
+					speedBoost = true;
+					//Cound not figure out how to delete modelels from scene and vector((
+					speedObj->SetY(-1000);
+					break;
+				}
+			}
 		}
+		if (speedBoost) {
+			kMaxSpeed = 200;
+			speedBoostTime -= frameTime;
+		}
+		if (speedBoostTime < 0) {
+			kMaxSpeed = 100;
+			speedBoostTime = 2.0;
+			speedBoost = false;
+		}
+
+
 		if (kRacerBackSpeed <= 0) {
 			collided = false;
 		}
 
 	}
 	void checkStage(vector<IModel*>* checkpointObj, IFont* myFont) {
+		if (currentStage == checkpointObj->size()) {
+			gameState = RaceComplete;
+		}
+		
 		if (warningMessage) {
 			myFont->Draw("Stage " + to_string(currentStage + 1) + " is incomplete!", winWidth * 0.5, winHeight * 0.5, kRed, kCentre);
 		}
@@ -202,6 +265,19 @@ typedef struct Racer {
 			}
 		}
 	}
+	void hover() {
+		model->MoveLocalY(sin((frameCount % 500) * 0.01257) * 0.003);
+	}
+	void followWaypoints(vector<IModel*>* staticWaypoints) {
+		model->LookAt(staticWaypoints->at(currentWaypoint));
+		if (vectorLen(model, staticWaypoints->at(currentWaypoint)) < 10) {
+			currentWaypoint++;
+		}
+		if (currentWaypoint == staticWaypoints->size()) {
+			currentWaypoint = 0;
+		}
+	}
+
 };
 
 //Functions
@@ -249,7 +325,7 @@ void findBounds(IMesh* someMesh, Vector2* maxPoint) {
 	someMesh->EndEnumVertices();
 }
 
-void loadModelsFromFile(vector<IModel*> &array, vector<Vector2> &arrayBounds, vector<IModel*>& arrayUncolliadable, string filename, I3DEngine* myEngine) {
+void loadModelsFromFile(vector<IModel*> &array, vector<Vector2> &arrayBounds, vector<IModel*>& arrayUncolliadable, vector<IModel*>& arraySpeedPackets, vector<IModel*>& arrayWaypoints, string filename, I3DEngine* myEngine) {
 	ifstream file(filename);
 
 	string meshName;
@@ -269,14 +345,24 @@ void loadModelsFromFile(vector<IModel*> &array, vector<Vector2> &arrayBounds, ve
 		getline(file, meshCoords);
 		float rotate = stof(meshCoords);
 
-		if (meshName == "Checkpoint.x") {
+		
+		if (meshName == "Waypoint.x") {
+			arrayWaypoints.push_back(someMesh->CreateModel(x, y, z));
+
+		}else if (meshName == "Checkpoint.x") {
 			arrayUncolliadable.push_back(someMesh->CreateModel(x, y, z));
 			arrayUncolliadable.back()->RotateLocalY(rotate);
+		}
+		else if (meshName == "SpeedPacket.x") {
+			arraySpeedPackets.push_back(someMesh->CreateModel(x, y, z));
+			arraySpeedPackets.back()->RotateLocalY(rotate);
 		}
 		else {
 			array.push_back(someMesh->CreateModel(x, y, z));
 			array.back()->RotateLocalY(rotate);
-			
+			if (meshName == "TankLarge2.x") {
+				array.back()->RotateLocalZ(45);
+			}
 			Vector2 point;
 			findBounds(someMesh, &point);
 			arrayBounds.push_back(point);
@@ -304,6 +390,12 @@ void changeCamera(I3DEngine* myEngine, ICamera* myCamera, Racer* thePlayer) {
 		}
 		else if (myEngine->KeyHeld(Key_Down)) {
 			myCamera->MoveLocalZ(-calcCameraSpeed);
+		}
+		else if (myEngine->KeyHeld(Key_Shift)) {
+			myCamera->MoveY(calcCameraSpeed);
+		}
+		else if (myEngine->KeyHeld(Key_Control)) {
+			myCamera->MoveY(-calcCameraSpeed);
 		}
 		else if (myEngine->KeyHit(Key_C)) {
 			myCamera->ResetOrientation();
@@ -375,10 +467,10 @@ IModel* loadModel(I3DEngine* myEngine, ICamera* myCamera, IModel* model) {
 			newModelName = "IsleCorner.x";
 		}
 		else if (myEngine->KeyHit(Key_3)) {
-			newModelName = "IsleCross.x";
+			newModelName = "TankSmall1.x";
 		}
 		else if (myEngine->KeyHit(Key_4)) {
-			newModelName = "IsleStraight.x";
+			newModelName = "TankLarge2.x";
 		}
 		else if (myEngine->KeyHit(Key_5)) {
 			newModelName = "IsleTee.x";
@@ -389,8 +481,18 @@ IModel* loadModel(I3DEngine* myEngine, ICamera* myCamera, IModel* model) {
 		else if (myEngine->KeyHit(Key_7)) {
 			newModelName = "Wall.x";
 		}
+		else if (myEngine->KeyHit(Key_8)) {
+			newModelName = "SpeedPacket.x";
+		}
+		else if (myEngine->KeyHit(Key_9)) {
+			newModelName = "GarageSmall.x";
+		}
+		else if (myEngine->KeyHit(Key_0)) {
+			newModelName = "Waypoint.x";
+		}
 		if (newModelName != "") {
 			newMesh = myEngine->LoadMesh(newModelName);
+			
 			model = newMesh->CreateModel(myCamera->GetX(), 0, myCamera->GetZ());
 		}
 	}
@@ -402,22 +504,10 @@ void moveNewModel(I3DEngine* myEngine, ICamera* myCamera) {
 
 	
 	if (newMesh != nullptr) {
-		if (myEngine->KeyHeld(Key_D)) {
-			newModel->MoveX(kNewModelSpeed * frameTime * myCamera->GetY());
-		}
-		else if (myEngine->KeyHeld(Key_A)) {
-			newModel->MoveX(-kNewModelSpeed * frameTime * myCamera->GetY());
-		}
-		else if (myEngine->KeyHeld(Key_W)) {
-			newModel->MoveZ(kNewModelSpeed * frameTime * myCamera->GetY());
-		}
-		else if (myEngine->KeyHeld(Key_S)) {
-			newModel->MoveZ(-kNewModelSpeed * frameTime * myCamera->GetY());
-		}
-		else if (myEngine->KeyHeld(Key_E)) {
-			newModel->RotateLocalY(kNewModelSpeed * frameTime * myCamera->GetY());
-		}
-		else if (myEngine->KeyHeld(Key_E)) {
+		newModel->SetPosition(myCamera->GetX(), 0, myCamera->GetZ());
+
+		
+		if (myEngine->KeyHeld(Key_E)) {
 			newModel->RotateLocalY(kNewModelSpeed * frameTime * myCamera->GetY());
 		}
 		else if (myEngine->KeyHeld(Key_Q)) {
@@ -446,7 +536,7 @@ void moveNewModel(I3DEngine* myEngine, ICamera* myCamera) {
 void main()
 {
 
-	
+
 	// Create a 3D engine (using TLX engine here) and open a window for it
 	I3DEngine* myEngine = New3DEngine( kTLX );
 	myEngine->StartWindowed();
@@ -478,14 +568,17 @@ void main()
 	vector<Vector2> staticObjectsBounds;
 
 	vector<IModel*> staticNonCollidableObjects;
-	loadModelsFromFile(staticObjects, staticObjectsBounds, staticNonCollidableObjects, "input.txt", myEngine);
+	vector<IModel*> speedPackets;
+	vector<IModel*> waypoints;;
+	loadModelsFromFile(staticObjects, staticObjectsBounds, staticNonCollidableObjects, speedPackets, waypoints, "input.txt", myEngine);
 
 	//Adding moving players
 	vector<IModel*> dynamicObjects;
 	Racer* player = &Racer(myEngine);
-	
+	Racer* opponent = &Racer(myEngine, "Opponent.x");
 
 	dynamicObjects.push_back(player->model);
+	dynamicObjects.push_back(opponent->model);
 	myEngine->StopMouseCapture();
 
 	ISprite* backdrop = myEngine->CreateSprite("ui_backdrop.tga", 0, 0);
@@ -534,17 +627,21 @@ void main()
 		}
 		//STAGE
 		else if (gameState == Stage) {
-			player->model->MoveLocalY(sin((frameCount % 500) * 0.01257)*0.003);
+			
 			myBigFont->Draw(to_string((int)player->kRacerSpeed), winWidth * 0.9, winHeight * 0.845, kCyan, kCentre);
+			player->boost(myEngine->KeyHeld(Key_Space), myFont);
 			player->moveRight(myEngine->KeyHeld(Key_D));
 			player->moveLeft(myEngine->KeyHeld(Key_A));
 			player->moveForward(myEngine->KeyHeld(Key_W));
 			player->moveBackward(myEngine->KeyHeld(Key_S));
-			player->Collide(&staticObjects, &staticObjectsBounds);	
+			player->Collide(&staticObjects, &staticObjectsBounds, &speedPackets);	
 			player->checkStage(&staticNonCollidableObjects, myFont);
+			player->hover();
 			
-			
-			
+			opponent->hover();
+			opponent->moveForward(true);
+			opponent->followWaypoints(&waypoints);
+			opponent->Collide(&staticObjects, &staticObjectsBounds, &speedPackets);
 		}
 		//RACE_COMPLETE
 		else if (gameState == RaceComplete) {
@@ -554,23 +651,28 @@ void main()
 		//DEVELOPER MODE
 		else if (gameState == Developer) {
 			
-			if (myEngine->AnyKeyHit()) {			
+			if (myEngine->AnyKeyHit()) {	
+
 				newModel = loadModel(myEngine, myCamera, newModel);
 			}
 			if (newModel != nullptr) {
 				moveNewModel(myEngine, myCamera);
-			}		
+			}
+			if (myEngine->KeyHit(Key_C)) {
+				newMesh->RemoveModel(newModel);
+				newModel = nullptr;
+			}
 		} 
 		//PAUSED MODE
 		else if (gameState == Paused) {
 			//Do nothing
 		}
-		
+		changeCamera(myEngine, myCamera, player);
 		//Allowing camera to change when in any other state rather than Demo
-		if (gameState != Demo) {
+		if (gameState != Demo && gameState != Developer) {
 			//Change camera
 			
-			changeCamera(myEngine, myCamera, player);
+			
 			//GAME UTILS
 
 			//FIRST
